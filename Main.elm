@@ -26,8 +26,10 @@ identity4x4 = Matrix4x4 [1,0,0,0,
                          0,0,1,0,
                          0,0,0,1]
 
-lowVal = 0-0.5
-highVal = 0.5
+-- lowVal = 0-0.49
+-- highVal = 0-0.25
+lowVal = 0-1.0
+highVal = 1.0
 myMesh = GLMesh {
   nodalPositions = [Coord3D lowVal lowVal 0, Coord3D highVal lowVal 0,
                     Coord3D lowVal highVal 0
@@ -41,4 +43,4 @@ myMesh = GLMesh {
               }
 
 main : Element
-main = glMeshObject 800 600 myMesh identity4x4
+main = glMeshObject 500 500 myMesh identity4x4

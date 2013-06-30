@@ -14,10 +14,10 @@ Elm.Native.Graphics.WebGLMesh = function(elm) {
                         uniform mat4 aProjection;\
                         void main(void) {\
                           vec4 pos = vec4(aPos, 1.0);\
-                          gl_Position = /* aProjection * */ pos;\
+                          gl_Position = pos; \
                         }";
     // For now, everything is red.
-    var fragmentShader = "precision mediump float;void main(void) { gl_FragColor = vec4(1.0,1.0,1.0,1.0); }"
+    var fragmentShader = "void main(void) { gl_FragColor = vec4(0.0,1.0,0.0,1.0); }"
 
     var newElement = Elm.Graphics.Element(elm).newElement;
     function renderGLMesh(model) {
@@ -26,15 +26,16 @@ Elm.Native.Graphics.WebGLMesh = function(elm) {
         setTimeout(function() {
             var fakeOldModel = newContext(jscanvas);
             updateGLMesh(jscanvas, fakeOldModel, model);
-        }, 0);
+        }, 100);
         return jscanvas;
     }
 
     function newContext(jscanvas) {
         var ctx = jscanvas.getContext("webgl") || jscanvas.getContext("experimental-webgl");
+        ctx.viewport(0, 0, 500, 500);
         var shaderProgram = ctx.createProgram();
 
-        ctx.enable(ctx.DEPTH_TEST);
+        ctx.disable(ctx.DEPTH_TEST);
 
         var vertShad = ctx.createShader(ctx.VERTEX_SHADER);
         ctx.shaderSource(vertShad, vertexShader);
@@ -48,10 +49,6 @@ Elm.Native.Graphics.WebGLMesh = function(elm) {
 
         ctx.linkProgram(shaderProgram);
         ctx.useProgram(shaderProgram);
-
-        if (!ctx.getProgramParameter(shaderProgram, ctx.LINK_STATUS)) {
-            alert("Could not initialise shaders");
-        }
 
         var shadeData = { aPos: ctx.getAttribLocation(shaderProgram, "aPos"),
                           aProjection: ctx.getUniformLocation(shaderProgram, "aProjection")
@@ -67,14 +64,19 @@ Elm.Native.Graphics.WebGLMesh = function(elm) {
         next.ctx = curr.ctx;
         next.shadeData = curr.shadeData;
 
+        jscanvas.width = next.w;
+        jscanvas.height = next.h;
         next.ctx.viewport(0, 0, next.w,
                           next.h);
+        alert("w=" + next.ctx.drawingBufferWidth + ", h=" + next.ctx.drawingBufferHeight);
+
 
         var meshChanged = next.mesh != curr.mesh;
         var projChanged = next.projection != curr.projection;
         
         if (meshChanged || projChanged) {
-            next.ctx.clearColor(0.0, 0.0, 0.0, 1.0);
+            next.ctx.clearColor(1.0, 0.0, 0.0, 1.0);
+            next.ctx.clearDepth(-10000.0);
             next.ctx.clear(next.ctx.COLOR_BUFFER_BIT |
                            next.ctx.DEPTH_BUFFER_BIT);
         }
@@ -82,20 +84,15 @@ Elm.Native.Graphics.WebGLMesh = function(elm) {
         var jsmesh = next.mesh._0;
 
         if (meshChanged) {
-            next.ctx.bindBuffer(next.ctx.ARRAY_BUFFER, next.ctx.createBuffer());
+            var b = next.ctx.createBuffer();
+            next.ctx.bindBuffer(next.ctx.ARRAY_BUFFER, b);
             var jsnpos = JS.fromList(jsmesh.nodalPositions);
-            var nodalPosBuf = new ArrayBuffer(4 * 3 * jsnpos.length);
-            var nodalPos = new Float32Array(nodalPosBuf);
+            next.shadeData.nNodes = jsnpos.length;
+            var nodalPos = new Float32Array(3 * next.shadeData.nNodes);
             for (var nodeID in jsnpos) {
                 var thisNodePos = jsnpos[nodeID];
                 nodalPos.set([thisNodePos._0, thisNodePos._1, thisNodePos._2], 3*nodeID);
             }
-            var testPos = new Float32Array(nodalPosBuf);
-            /*
-            alert("((" + testPos[0] + "," + testPos[1] + "," + testPos[2] +")," +
-                  "(" + testPos[3] + "," + testPos[4] + "," + testPos[5] +")," +
-                  "(" + testPos[6] + "," + testPos[7] + "," + testPos[8] +"))");
-            */
             next.ctx.bufferData(next.ctx.ARRAY_BUFFER, nodalPos, next.ctx.STATIC_DRAW);
             next.ctx.vertexAttribPointer(next.shadeData.aPos, 3, next.ctx.FLOAT, false, 0, 0);
 
@@ -104,14 +101,13 @@ Elm.Native.Graphics.WebGLMesh = function(elm) {
             next.ctx.bindBuffer(next.ctx.ELEMENT_ARRAY_BUFFER, next.ctx.createBuffer());
             var jselems = JS.fromList(jsmesh.elements);
             next.shadeData.nElems = jselems.length;
-            next.shadeData.nNodes = jsnpos.length;
             var elemBuf = new ArrayBuffer(2 * 3 * jselems.length);
             var elemSet = new Int16Array(elemBuf);
             for (var elemID in jselems) {
                 var thisTriangle = jselems[elemID];
                 elemSet.set([thisTriangle._0, thisTriangle._1, thisTriangle._2], 3 * elemID);
             }
-            next.ctx.bufferData(next.ctx.ELEMENT_ARRAY_BUFFER, elemBuf, next.ctx.STATIC_DRAW);
+            next.ctx.bufferData(next.ctx.ELEMENT_ARRAY_BUFFER, elemBuf, next.ctx.STATIC_COPY);
             */
         }
 
