@@ -113,8 +113,8 @@ multiplyQuaternion (Quaternion (a1, b1, c1, d1)) (Quaternion (a2, b2, c2, d2)) =
               b1 * c2 - c1 * b2 + a1 * d2 + d1 * a2)
 conjugateQuaternion (Quaternion (a, b, c, d)) = Quaternion (a, 0-b, 0-c, 0-d)
 
-inverseRotateVectorByQuaternion : Quaternion -> (Float, Float, Float) -> (Float, Float, Float)
-inverseRotateVectorByQuaternion q (x,y,z) =
+rotateVectorByQuaternion : Quaternion -> (Float, Float, Float) -> (Float, Float, Float)
+rotateVectorByQuaternion q (x,y,z) =
   let
     Quaternion (_, x', y', z') =
       q `multiplyQuaternion` (Quaternion (0, x, y, z)) `multiplyQuaternion` (conjugateQuaternion q)
@@ -233,7 +233,7 @@ updateCameraMoveState (mouseDown, shift, ctrl, (mouseX, mouseY) as mousePos) old
                                 TransformXY -> (distanceX, 0-distanceY, 0)
                                 TransformXZ -> (distanceX, 0, distanceY)
                 (otx, oty, otz) = oldMoveState.cameraTransformation
-                (tx, ty, tz) = inverseRotateVectorByQuaternion (oldMoveState.cameraQuaternion) transformBy
+                (tx, ty, tz) = rotateVectorByQuaternion (oldMoveState.cameraQuaternion) transformBy
               in
                 { oldMoveState |
                     cameraTransformation <- (otx + tx, oty + ty, otz + tz),
