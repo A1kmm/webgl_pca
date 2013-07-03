@@ -263,4 +263,4 @@ main =
                                                          diffuseColour = GLColour 1 0.5 0.5,
                                                          ambientIntensity = 0.4,
                                                          diffuseIntensity = 0.5,
-                                                         diffuseDirection = (0.3, 0.8, 0.5) })))
+                                                         diffuseDirection = (0.3, 0.8, 0 - 0.5) })))
