@@ -173,6 +173,7 @@ myPrimModel =
 
 myFovRadians = pi / 32
 
+{-
 perspectiveMatrix near far aspectRatio fovRadians =
   let
     cotHalfFov = 1 / (tan (fovRadians / 2))
@@ -182,6 +183,19 @@ perspectiveMatrix near far aspectRatio fovRadians =
               0, 0, near/(far - near), far * near / (near - far),
               0, 0, 1.0, 0.0]
 
+-}
+
+perspectiveMatrix near far aspectRatio fovRadians =
+  let
+    f = 1.0 / (tan(fovRadians / 2))
+    nf = 1 / (near - far)
+  in
+    transpose4x4 <| Matrix4x4 [
+      f / aspectRatio,    0,     0,                      0,
+      0,                  f,     0,                      0,
+      0,                  0,     (far + near) * nf,      0 - 1,
+      0,                  0,     (2 * far * near) * nf,  0
+      ]
 
 myPerspectiveMatrix : Matrix4x4
 myPerspectiveMatrix = perspectiveMatrix 0.01 15 1 myFovRadians
