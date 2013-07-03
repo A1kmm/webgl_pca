@@ -144,22 +144,19 @@ vectorToTransformMatrix (x, y, z) =
              0, 0, 1, z,
              0, 0, 0, 1]
 
-lowVal = 0-0.8
-highVal = 0.8
-lowZ = 2
-highZ = 3.6
+myCubeSizeHalf = 2
 
 myPrimModel =
   let
     -- l = left, r = right, b = bottom, t = top, f = front, a = back.
-    clbf = Coord3D lowVal lowVal lowZ
-    crbf = Coord3D highVal lowVal lowZ
-    cltf = Coord3D lowVal highVal lowZ
-    crtf = Coord3D highVal highVal lowZ
-    clba = Coord3D lowVal lowVal highZ
-    crba = Coord3D highVal lowVal highZ
-    clta = Coord3D lowVal highVal highZ
-    crta = Coord3D highVal highVal highZ
+    clbf = Coord3D (0 - myCubeSizeHalf) (0 - myCubeSizeHalf) (0 - myCubeSizeHalf)
+    crbf = Coord3D      myCubeSizeHalf  (0 - myCubeSizeHalf) (0 - myCubeSizeHalf)
+    cltf = Coord3D (0 - myCubeSizeHalf)      myCubeSizeHalf  (0 - myCubeSizeHalf)
+    crtf = Coord3D      myCubeSizeHalf       myCubeSizeHalf  (0 - myCubeSizeHalf)
+    clba = Coord3D (0 - myCubeSizeHalf) (0 - myCubeSizeHalf)      myCubeSizeHalf
+    crba = Coord3D      myCubeSizeHalf  (0 - myCubeSizeHalf)      myCubeSizeHalf
+    clta = Coord3D (0 - myCubeSizeHalf)      myCubeSizeHalf       myCubeSizeHalf
+    crta = Coord3D      myCubeSizeHalf       myCubeSizeHalf       myCubeSizeHalf
     quad a b c d = [Triangle a b c, Triangle a c d]
   in
    GLPrimModel {     
@@ -174,19 +171,20 @@ myPrimModel =
         []
                }
 
-fovRadians = pi / 2
+myFovRadians = pi / 32
 
 perspectiveMatrix near far aspectRatio fovRadians =
   let
-    cotFov = 1 / (tan (fovRadians / 2))
+    cotHalfFov = 1 / (tan (fovRadians / 2))
   in
-   Matrix4x4 [near * cotFov / aspectRatio, 0, 0, 0,
-              0, near * cotFov, 0, 0,
+   Matrix4x4 [near * cotHalfFov / aspectRatio, 0, 0, 0,
+              0, near * cotHalfFov, 0, 0,
               0, 0, near/(far - near), far * near / (near - far),
               0, 0, 1.0, 0.0]
 
+
 myPerspectiveMatrix : Matrix4x4
-myPerspectiveMatrix = perspectiveMatrix 1 100 1 (pi / 2)
+myPerspectiveMatrix = perspectiveMatrix 0.01 15 1 myFovRadians
 
 data TransformPlane = TransformXY | TransformXZ
 data CameraModifyMode = CameraRotate | CameraTransform TransformPlane
@@ -196,7 +194,7 @@ type CameraMoveState = { cameraQuaternion: Quaternion, cameraTransformation: (Fl
                          cameraModifyMode: CameraModifyMode }
 initialCameraMoveState : CameraMoveState
 initialCameraMoveState = { cameraQuaternion = Quaternion (1,0,0,0),
-                           cameraTransformation = (0, 0, 0),
+                           cameraTransformation = (0, 0, 4),
                            processedPosition = (0,0), mouseWasDown = False, 
                            cameraModifyMode = CameraRotate }
 
@@ -222,7 +220,7 @@ updateCameraMoveState (mouseDown, shift, ctrl, (mouseX, mouseY) as mousePos) old
                 rotQuaternion = eulerToQuaternion phi 0 theta
               in
                 { oldMoveState | cameraQuaternion <-
-                  normaliseQuaternion (rotQuaternion `multiplyQuaternion` oldMoveState.cameraQuaternion),
+                  normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
                   processedPosition <- mousePos }
             CameraTransform plane ->
               let
@@ -240,9 +238,11 @@ updateCameraMoveState (mouseDown, shift, ctrl, (mouseX, mouseY) as mousePos) old
                     processedPosition <- mousePos }
 
 cameraMatrix : Signal Matrix4x4
-cameraMatrix = Signal.lift (\x -> quaternionToRotationMatrix x.cameraQuaternion
-                                    `multiply4x4`
-                                  vectorToTransformMatrix x.cameraTransformation) cameraMoveState
+cameraMatrix = Signal.lift (\x ->
+  vectorToTransformMatrix x.cameraTransformation
+     `multiply4x4`
+  quaternionToRotationMatrix x.cameraQuaternion
+  ) cameraMoveState
 
 canvasWidth : Int
 canvasWidth = 500
@@ -254,7 +254,7 @@ main =
   flip Signal.lift cameraMatrix (\cameraMatrixValue ->
                                   let camPerspect = myPerspectiveMatrix `multiply4x4` cameraMatrixValue
                                   in
-                                   -- (plainText (show (norm4 (mat4x4xv camPerspect [lowVal, lowVal, lowZ, 1.0]), norm4 (mat4x4xv camPerspect [highVal, lowVal, lowZ, 1.0]), (norm4 (mat4x4xv camPerspect [lowVal, highVal, lowZ, 1.0]))))) `above`
+                        
                                    (glSceneObject canvasWidth canvasHeight myPrimModel 
                                       (GLPrimSceneView { projection = transpose4x4 camPerspect,
                                                          ambientColour = GLColour 1 1 1,
