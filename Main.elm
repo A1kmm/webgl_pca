@@ -173,18 +173,6 @@ myPrimModel =
 
 myFovRadians = pi / 4
 
-{-
-perspectiveMatrix near far aspectRatio fovRadians =
-  let
-    cotHalfFov = 1 / (tan (fovRadians / 2))
-  in
-   Matrix4x4 [near * cotHalfFov / aspectRatio, 0, 0, 0,
-              0, near * cotHalfFov, 0, 0,
-              0, 0, near/(far - near), far * near / (near - far),
-              0, 0, 1.0, 0.0]
-
--}
-
 perspectiveMatrix near far aspectRatio fovRadians =
   let
     f = 1.0 / (tan(fovRadians / 2))
