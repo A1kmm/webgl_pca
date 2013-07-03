@@ -171,7 +171,7 @@ myPrimModel =
         []
                }
 
-myFovRadians = pi / 32
+myFovRadians = pi / 4
 
 {-
 perspectiveMatrix near far aspectRatio fovRadians =
@@ -208,7 +208,7 @@ type CameraMoveState = { cameraQuaternion: Quaternion, cameraTransformation: (Fl
                          cameraModifyMode: CameraModifyMode }
 initialCameraMoveState : CameraMoveState
 initialCameraMoveState = { cameraQuaternion = Quaternion (1,0,0,0),
-                           cameraTransformation = (0, 0, 4),
+                           cameraTransformation = (0, 0, 0-10),
                            processedPosition = (0,0), mouseWasDown = False, 
                            cameraModifyMode = CameraRotate }
 
@@ -229,8 +229,8 @@ updateCameraMoveState (mouseDown, shift, ctrl, (mouseX, mouseY) as mousePos) old
               let
                 (lastX, lastY) = oldMoveState.processedPosition
                 -- Moving the mouse all the way across rotates 1 radian.
-                phi = (toFloat (mouseX - lastX)) / (toFloat canvasWidth)
-                theta = (toFloat (mouseY - lastY)) / (toFloat canvasHeight)
+                phi   = (toFloat (lastX - mouseX)) / (toFloat canvasWidth)
+                theta = (toFloat (lastY - mouseY)) / (toFloat canvasHeight)
                 rotQuaternion = eulerToQuaternion phi 0 theta
               in
                 { oldMoveState | cameraQuaternion <-
