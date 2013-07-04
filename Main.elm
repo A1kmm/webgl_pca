@@ -260,7 +260,7 @@ updateCameraMoveState (mouseDown, shift, ctrl, (mouseX, mouseY) as mousePos) old
                                 TranslateXY -> (distanceX, 0-distanceY, 0)
                                 TranslateXZ -> (distanceX, 0, distanceY)
                 (otx, oty, otz) = oldMoveState.cameraTransformation
-                (tx, ty, tz) = inverseRotateVectorByQuaternion (oldMoveState.cameraQuaternion) translateBy
+                (tx, ty, tz) =  translateBy
               in
                 { oldMoveState |
                     cameraTransformation <- (otx + tx, oty + ty, otz + tz),
