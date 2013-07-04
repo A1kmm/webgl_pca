@@ -215,8 +215,8 @@ perspectiveMatrix near far aspectRatio fovRadians =
 myPerspectiveMatrix : Matrix4x4
 myPerspectiveMatrix = perspectiveMatrix 0.01 15 1 myFovRadians
 
-data TransformPlane = TransformXY | TransformXZ
-data CameraModifyMode = CameraRotate | CameraTransform TransformPlane
+data TranslationPlane = TranslateXY | TranslateXZ
+data CameraModifyMode = CameraRotate | CameraTranslate TranslationPlane
 
 type CameraMoveState = { cameraQuaternion: Quaternion, cameraTransformation: (Float, Float, Float),
                          processedPosition: (Int, Int), mouseWasDown: Bool, 
@@ -236,8 +236,8 @@ updateCameraMoveState (mouseDown, shift, ctrl, (mouseX, mouseY) as mousePos) old
     else
       if not oldMoveState.mouseWasDown
         then { oldMoveState | mouseWasDown <- True, processedPosition <- mousePos,
-                              cameraModifyMode <- if shift then CameraTransform TransformXY else
-                                                     if ctrl then CameraTransform TransformXZ else CameraRotate}
+                              cameraModifyMode <- if shift then CameraTranslate TranslateXY else
+                                                     if ctrl then CameraTranslate TranslateXZ else CameraRotate}
         else
           case oldMoveState.cameraModifyMode of
             CameraRotate ->
@@ -251,16 +251,16 @@ updateCameraMoveState (mouseDown, shift, ctrl, (mouseX, mouseY) as mousePos) old
                 { oldMoveState | cameraQuaternion <-
                   normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
                   processedPosition <- mousePos }
-            CameraTransform plane ->
+            CameraTranslate plane ->
               let
                 (lastX, lastY) = oldMoveState.processedPosition
                 distanceX = (toFloat (mouseX - lastX)) / (toFloat canvasWidth)
                 distanceY = (toFloat (mouseY - lastY)) / (toFloat canvasHeight)
-                transformBy = case plane of
-                                TransformXY -> (distanceX, 0-distanceY, 0)
-                                TransformXZ -> (distanceX, 0, distanceY)
+                translateBy = case plane of
+                                TranslateXY -> (distanceX, 0-distanceY, 0)
+                                TranslateXZ -> (distanceX, 0, distanceY)
                 (otx, oty, otz) = oldMoveState.cameraTransformation
-                (tx, ty, tz) = inverseRotateVectorByQuaternion (oldMoveState.cameraQuaternion) transformBy
+                (tx, ty, tz) = inverseRotateVectorByQuaternion (oldMoveState.cameraQuaternion) translateBy
               in
                 { oldMoveState |
                     cameraTransformation <- (otx + tx, oty + ty, otz + tz),
