@@ -227,17 +227,20 @@ initialCameraMoveState = { cameraQuaternion = Quaternion (1,0,0,0),
                            processedPosition = (0,0), mouseWasDown = False, 
                            cameraModifyMode = CameraRotate }
 
+keyboardAlt : [KeyCode] -> Bool
+keyboardAlt keysDown = any (\x -> x == 18) keysDown 
+
 cameraMoveState : Signal CameraMoveState
-cameraMoveState = Signal.foldp updateCameraMoveState initialCameraMoveState (Signal.lift4 (,,,) Mouse.isDown Keyboard.shift Keyboard.ctrl Mouse.position)
-updateCameraMoveState : (Bool, Bool, Bool, (Int, Int)) -> CameraMoveState -> CameraMoveState
-updateCameraMoveState (mouseDown, shift, ctrl, (mouseX, mouseY) as mousePos) oldMoveState =
+cameraMoveState = Signal.foldp updateCameraMoveState initialCameraMoveState (Signal.lift5 (,,,,) Mouse.isDown Keyboard.shift Keyboard.ctrl Keyboard.keysDown Mouse.position)
+updateCameraMoveState : (Bool, Bool, Bool, [KeyCode], (Int, Int)) -> CameraMoveState -> CameraMoveState
+updateCameraMoveState (mouseDown, shift, ctrl, keysDown, (mouseX, mouseY) as mousePos) oldMoveState =
   if not mouseDown
     then {oldMoveState | mouseWasDown <- False }
     else
       if not oldMoveState.mouseWasDown
         then { oldMoveState | mouseWasDown <- True, processedPosition <- mousePos,
                               cameraModifyMode <- if shift then CameraTranslate TranslateXY else
-                                                     if ctrl then CameraTranslate TranslateXZ else CameraRotate}
+                                                     if (ctrl || keyboardAlt keysDown) then CameraTranslate TranslateXZ else CameraRotate}
         else
           case oldMoveState.cameraModifyMode of
             CameraRotate ->
