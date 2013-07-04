@@ -39,6 +39,9 @@ identity4x4 = Matrix4x4 [1,0,0,0,
                          0,0,1,0,
                          0,0,0,1]
 
+tuple3FromList : [Float] -> (Float, Float, Float)
+tuple3FromList [x, y, z, w] = (x, y, z)
+
 matrix4x4Row : Int -> Matrix4x4 -> [Float]
 matrix4x4Row row (Matrix4x4 [x11,x12,x13,x14,
                              x21,x22,x23,x24,
@@ -93,6 +96,30 @@ transpose4x4 (Matrix4x4 [x11,x12,x13,x14,
 
 norm4 : [Float] -> [Float]
 norm4 [x1, x2, x3, x4] = [x1/x4, x2/x4, x3/x4]
+
+
+-- | mat4ToInverseMat3 calculates the inverse of the upper 3x3 elements of a 4x4 matrix, returning a 4x4 matrix containing the result in its upper 3x3, and the identiy in the lower right.
+--   Based on code from glMatrix.
+mat4ToInverseMat3 : Matrix4x4 -> Matrix4x4
+mat4ToInverseMat3 (Matrix4x4 
+  [x11,x12,x13,x14,
+   x21,x22,x23,x24,
+   x31,x32,x33,x34,
+   x41,x42,x43,x44]) =
+  let
+    b12 = x33*x22-x23*x32
+    b22 = x23*x31-x33*x21
+    b32 = x32*x21-x22*x31
+         
+    det = x11*b12 + x12*b22 + x13*b32
+    invDet = if det == 0 then 0 else 1/det
+  in
+    Matrix4x4 [
+      b12*invDet,  (x13*x32 - x33*x12)*invDet,  (x23*x12 - x13*x22)*invDet, 0,
+      b22*invDet,  (x33*x11 - x13*x31)*invDet,  (x13*x21 - x23*x11)*invDet, 0,
+      b32*invDet,  (x12*x31 - x32*x11)*invDet,  (x22*x11 - x12*x21)*invDet, 0,
+      0,           0,                           0,                          1
+      ]
 
 quaternionToRotationMatrix (Quaternion (a, b, c, d)) =
   Matrix4x4 [1 - 2 * (c * c + d * d), 2 * (b * c + a * d),     2 * (b * d - a * c),     0,
@@ -251,16 +278,20 @@ canvasWidth = 500
 canvasHeight : Int
 canvasHeight = 500
 
+initialDiffuseDirection = [0.3, 0.8, 0 - 0.5, 1]
+
 main : Signal Element
 main = 
   flip Signal.lift cameraMatrix (\cameraMatrixValue ->
-                                  let camPerspect = myPerspectiveMatrix `multiply4x4` cameraMatrixValue
-                                  in
-                        
-                                   (glSceneObject canvasWidth canvasHeight myPrimModel 
-                                      (GLPrimSceneView { projection = transpose4x4 camPerspect,
-                                                         ambientColour = GLColour 1 1 1,
-                                                         diffuseColour = GLColour 1 0.5 0.5,
-                                                         ambientIntensity = 0.4,
-                                                         diffuseIntensity = 0.5,
-                                                         diffuseDirection = (0.3, 0.8, 0 - 0.5) })))
+    let
+      camPerspect = myPerspectiveMatrix `multiply4x4` cameraMatrixValue
+      rotatedDiffuseDirection = tuple3FromList <| (mat4ToInverseMat3 cameraMatrixValue) `mat4x4xv` initialDiffuseDirection 
+    in
+
+    (glSceneObject canvasWidth canvasHeight myPrimModel 
+       (GLPrimSceneView { projection = transpose4x4 camPerspect,
+                          ambientColour = GLColour 1 1 1,
+                          diffuseColour = GLColour 1 0.5 0.5,
+                          ambientIntensity = 0.4,
+                          diffuseIntensity = 0.5,
+                          diffuseDirection = rotatedDiffuseDirection })))
