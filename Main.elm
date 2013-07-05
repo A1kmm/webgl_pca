@@ -3,6 +3,7 @@ import Dict as D
 import Mouse
 import Keyboard
 import Signal
+import Touch
 
 data BasisFunction = CONSTANT | LINEAR_LAGRANGE | QUADRATIC_LAGRANGE |
                      CUBIC_LAGRANGE | LINEAR_SIMPLEX | QUADRATIC_SIMPLEX
@@ -219,33 +220,33 @@ data TranslationPlane = TranslateXY | TranslateXZ
 data CameraModifyMode = CameraRotate | CameraTranslate TranslationPlane
 
 type CameraMoveState = { cameraQuaternion: Quaternion, cameraTransformation: (Float, Float, Float),
-                         processedPosition: (Int, Int), mouseWasDown: Bool, 
+                         processedMousePosition: (Int, Int), mouseWasDown: Bool, processedSingleTouchPosition: (Int, Int),
                          cameraModifyMode: CameraModifyMode }
 initialCameraMoveState : CameraMoveState
 initialCameraMoveState = { cameraQuaternion = Quaternion (1,0,0,0),
                            cameraTransformation = (0, 0, 0-10),
-                           processedPosition = (0,0), mouseWasDown = False, 
+                           processedMousePosition = (0,0), mouseWasDown = False, processedSingleTouchPosition = (0,0),
                            cameraModifyMode = CameraRotate }
 
 keyboardAlt : [KeyCode] -> Bool
 keyboardAlt keysDown = any (\x -> x == 18) keysDown 
 
 cameraMoveState : Signal CameraMoveState
-cameraMoveState = Signal.foldp updateCameraMoveState initialCameraMoveState (Signal.lift5 (,,,,) Mouse.isDown Keyboard.shift Keyboard.ctrl Keyboard.keysDown Mouse.position)
-updateCameraMoveState : (Bool, Bool, Bool, [KeyCode], (Int, Int)) -> CameraMoveState -> CameraMoveState
-updateCameraMoveState (mouseDown, shift, ctrl, keysDown, (mouseX, mouseY) as mousePos) oldMoveState =
-  if not mouseDown
+cameraMoveState = Signal.foldp updateCameraMoveState initialCameraMoveState (Signal.lift6 (,,,,,) Mouse.isDown Keyboard.shift Keyboard.ctrl Keyboard.keysDown Mouse.position Touch.touches)
+updateCameraMoveState : (Bool, Bool, Bool, [KeyCode], (Int, Int), touches) -> CameraMoveState -> CameraMoveState
+updateCameraMoveState (mouseDown, shift, ctrl, keysDown, (mouseX, mouseY) as mousePos, touches) oldMoveState =
+  if not (mouseDown || length touches > 0)
     then {oldMoveState | mouseWasDown <- False }
     else
       if not oldMoveState.mouseWasDown
-        then { oldMoveState | mouseWasDown <- True, processedPosition <- mousePos,
+        then { oldMoveState | mouseWasDown <- True, processedMousePosition <- mousePos,
                               cameraModifyMode <- if shift then CameraTranslate TranslateXY else
                                                      if (ctrl || keyboardAlt keysDown) then CameraTranslate TranslateXZ else CameraRotate}
         else
           case oldMoveState.cameraModifyMode of
             CameraRotate ->
               let
-                (lastX, lastY) = oldMoveState.processedPosition
+                (lastX, lastY) = oldMoveState.processedMousePosition
                 -- Moving the mouse all the way across rotates 1 radian.
                 phi   = (toFloat (lastX - mouseX)) / (toFloat canvasWidth)
                 theta = (toFloat (lastY - mouseY)) / (toFloat canvasHeight)
@@ -253,10 +254,10 @@ updateCameraMoveState (mouseDown, shift, ctrl, keysDown, (mouseX, mouseY) as mou
               in
                 { oldMoveState | cameraQuaternion <-
                   normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
-                  processedPosition <- mousePos }
+                  processedMousePosition <- mousePos }
             CameraTranslate plane ->
               let
-                (lastX, lastY) = oldMoveState.processedPosition
+                (lastX, lastY) = oldMoveState.processedMousePosition
                 distanceX = (toFloat (mouseX - lastX)) / (toFloat canvasWidth)
                 distanceY = (toFloat (mouseY - lastY)) / (toFloat canvasHeight)
                 translateBy = case plane of
@@ -267,7 +268,7 @@ updateCameraMoveState (mouseDown, shift, ctrl, keysDown, (mouseX, mouseY) as mou
               in
                 { oldMoveState |
                     cameraTransformation <- (otx + tx, oty + ty, otz + tz),
-                    processedPosition <- mousePos }
+                    processedMousePosition <- mousePos }
 
 cameraMatrix : Signal Matrix4x4
 cameraMatrix = Signal.lift (\x ->
