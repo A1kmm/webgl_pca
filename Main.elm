@@ -172,30 +172,31 @@ vectorToTransformMatrix (x, y, z) =
              0, 0, 1, z,
              0, 0, 0, 1]
 
-myCubeSizeHalf = 2
+myCubeSizeHalf = 2.0
 
 myPrimModel =
   let
-    -- l = left, r = right, b = bottom, t = top, f = front, a = back.
-    clbf = Coord3D (0 - myCubeSizeHalf) (0 - myCubeSizeHalf) (0 - myCubeSizeHalf)
-    crbf = Coord3D      myCubeSizeHalf  (0 - myCubeSizeHalf) (0 - myCubeSizeHalf)
-    cltf = Coord3D (0 - myCubeSizeHalf)      myCubeSizeHalf  (0 - myCubeSizeHalf)
-    crtf = Coord3D      myCubeSizeHalf       myCubeSizeHalf  (0 - myCubeSizeHalf)
-    clba = Coord3D (0 - myCubeSizeHalf) (0 - myCubeSizeHalf)      myCubeSizeHalf
-    crba = Coord3D      myCubeSizeHalf  (0 - myCubeSizeHalf)      myCubeSizeHalf
-    clta = Coord3D (0 - myCubeSizeHalf)      myCubeSizeHalf       myCubeSizeHalf
-    crta = Coord3D      myCubeSizeHalf       myCubeSizeHalf       myCubeSizeHalf
+    -- lower case means a negative, upper case means a positive, e.g. xYZ is the negative for x, but positive for Y and Z
+    cxyz = Coord3D (0 - myCubeSizeHalf) (0 - myCubeSizeHalf) (0 - myCubeSizeHalf)
+    cXyz = Coord3D      myCubeSizeHalf  (0 - myCubeSizeHalf) (0 - myCubeSizeHalf)
+    cxYz = Coord3D (0 - myCubeSizeHalf)      myCubeSizeHalf  (0 - myCubeSizeHalf)
+    cXYz = Coord3D      myCubeSizeHalf       myCubeSizeHalf  (0 - myCubeSizeHalf)
+    cxyZ = Coord3D (0 - myCubeSizeHalf) (0 - myCubeSizeHalf)      myCubeSizeHalf
+    cXyZ = Coord3D      myCubeSizeHalf  (0 - myCubeSizeHalf)      myCubeSizeHalf
+    cxYZ = Coord3D (0 - myCubeSizeHalf)      myCubeSizeHalf       myCubeSizeHalf
+    cXYZ = Coord3D      myCubeSizeHalf       myCubeSizeHalf       myCubeSizeHalf
+
     quad a b c d = [Triangle a b c, Triangle a c d]
   in
    GLPrimModel {     
      -- Vertex ordering: anti-clockwise around external surface.
      primitives =
-        quad clbf crbf crtf cltf ++ -- front
-        quad clba clbf cltf clta ++ -- left
-        quad crbf crba crta crtf ++ -- right
-        quad clba clta crta crba ++ -- back
-        quad cltf crtf crta clta ++ -- top
-        quad clbf crbf crba clba ++ -- bottom
+        quad cXYZ cxYZ cxyZ cXyZ ++ -- +Z face
+        quad cXyz cxyz cxYz cXYz ++ -- -Z face
+        quad cXYZ cXyZ cXyz cXYz ++ -- +X face
+        quad cxYz cxyz cxyZ cxYZ ++ -- -X face
+        quad cXYZ cXYz cxYz cxYZ ++ -- +Y face
+        quad cxyZ cxyz cXyz cXyZ ++ -- -Y face
         []
                }
 
