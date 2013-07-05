@@ -220,55 +220,64 @@ data TranslationPlane = TranslateXY | TranslateXZ
 data CameraModifyMode = CameraRotate | CameraTranslate TranslationPlane
 
 type CameraMoveState = { cameraQuaternion: Quaternion, cameraTransformation: (Float, Float, Float),
-                         processedMousePosition: (Int, Int), mouseWasDown: Bool, processedSingleTouchPosition: (Int, Int),
+                         processedPosition: (Int, Int), wasDragging: Bool, 
                          cameraModifyMode: CameraModifyMode }
+
 initialCameraMoveState : CameraMoveState
 initialCameraMoveState = { cameraQuaternion = Quaternion (1,0,0,0),
                            cameraTransformation = (0, 0, 0-10),
-                           processedMousePosition = (0,0), mouseWasDown = False, processedSingleTouchPosition = (0,0),
+                           processedPosition = (0,0), wasDragging = False,
                            cameraModifyMode = CameraRotate }
 
 keyboardAlt : [KeyCode] -> Bool
 keyboardAlt keysDown = any (\x -> x == 18) keysDown 
 
 cameraMoveState : Signal CameraMoveState
-cameraMoveState = Signal.foldp updateCameraMoveState initialCameraMoveState (Signal.lift6 (,,,,,) Mouse.isDown Keyboard.shift Keyboard.ctrl Keyboard.keysDown Mouse.position Touch.touches)
-updateCameraMoveState : (Bool, Bool, Bool, [KeyCode], (Int, Int), touches) -> CameraMoveState -> CameraMoveState
-updateCameraMoveState (mouseDown, shift, ctrl, keysDown, (mouseX, mouseY) as mousePos, touches) oldMoveState =
-  if not (mouseDown || length touches > 0)
-    then {oldMoveState | mouseWasDown <- False }
-    else
-      if not oldMoveState.mouseWasDown
-        then { oldMoveState | mouseWasDown <- True, processedMousePosition <- mousePos,
-                              cameraModifyMode <- if shift then CameraTranslate TranslateXY else
-                                                     if (ctrl || keyboardAlt keysDown) then CameraTranslate TranslateXZ else CameraRotate}
-        else
-          case oldMoveState.cameraModifyMode of
-            CameraRotate ->
-              let
-                (lastX, lastY) = oldMoveState.processedMousePosition
-                -- Moving the mouse all the way across rotates 1 radian.
-                phi   = (toFloat (lastX - mouseX)) / (toFloat canvasWidth)
-                theta = (toFloat (lastY - mouseY)) / (toFloat canvasHeight)
-                rotQuaternion = eulerToQuaternion phi 0 theta
-              in
-                { oldMoveState | cameraQuaternion <-
-                  normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
-                  processedMousePosition <- mousePos }
-            CameraTranslate plane ->
-              let
-                (lastX, lastY) = oldMoveState.processedMousePosition
-                distanceX = (toFloat (mouseX - lastX)) / (toFloat canvasWidth)
-                distanceY = (toFloat (mouseY - lastY)) / (toFloat canvasHeight)
-                translateBy = case plane of
-                                TranslateXY -> (distanceX, 0-distanceY, 0)
-                                TranslateXZ -> (distanceX, 0, distanceY)
-                (otx, oty, otz) = oldMoveState.cameraTransformation
-                (tx, ty, tz) =  translateBy
-              in
-                { oldMoveState |
-                    cameraTransformation <- (otx + tx, oty + ty, otz + tz),
-                    processedMousePosition <- mousePos }
+cameraMoveState = Signal.foldp updateCameraMoveState initialCameraMoveState (Signal.lift4 (,,,) Keyboard.shift Keyboard.ctrl Keyboard.keysDown Touch.touches)
+updateCameraMoveState : (Bool, Bool, [KeyCode], [Touch]) -> CameraMoveState -> CameraMoveState
+updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
+  let
+    dragging = (length touches > 0)
+  in
+    if not dragging
+      then {oldMoveState | wasDragging <- False }
+      else
+        let
+          ( pointer :: _ ) = touches
+          newCameraModifyMode = if (shift || length touches == 2) then CameraTranslate TranslateXY else
+                               if (ctrl || keyboardAlt keysDown || length touches > 2) then CameraTranslate TranslateXZ 
+                                 else CameraRotate
+        in
+          if not oldMoveState.wasDragging
+            then { oldMoveState | wasDragging <- True, processedPosition <- (pointer.x, pointer.y),
+                                cameraModifyMode <- newCameraModifyMode}
+            else
+              case oldMoveState.cameraModifyMode of
+                CameraRotate ->
+                  let
+                    (lastX, lastY) = oldMoveState.processedPosition
+                    -- Moving the mouse all the way across rotates 1 radian.
+                    phi   = (toFloat (lastX - pointer.x)) / (toFloat canvasWidth)
+                    theta = (toFloat (lastY - pointer.y)) / (toFloat canvasHeight)
+                    rotQuaternion = eulerToQuaternion phi 0 theta
+                  in
+                    { oldMoveState | cameraQuaternion <-
+                      normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
+                      processedPosition <- (pointer.x, pointer.y) }
+                CameraTranslate plane ->
+                  let
+                    (lastX, lastY) = oldMoveState.processedPosition
+                    distanceX = (toFloat (pointer.x - lastX)) / (toFloat canvasWidth)
+                    distanceY = (toFloat (pointer.y - lastY)) / (toFloat canvasHeight)
+                    translateBy = case plane of
+                                    TranslateXY -> (distanceX, 0-distanceY, 0)
+                                    TranslateXZ -> (distanceX, 0, distanceY)
+                    (otx, oty, otz) = oldMoveState.cameraTransformation
+                    (tx, ty, tz) =  translateBy
+                  in
+                    { oldMoveState |
+                        cameraTransformation <- (otx + tx, oty + ty, otz + tz),
+                        processedPosition <- (pointer.x, pointer.y) }
 
 cameraMatrix : Signal Matrix4x4
 cameraMatrix = Signal.lift (\x ->
