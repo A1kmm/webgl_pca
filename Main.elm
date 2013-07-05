@@ -247,6 +247,8 @@ canvasWidth = 500
 canvasHeight : Int
 canvasHeight = 500
 
+initialDiffuseDirection = [0.3, 0.5, 0.8, 1]
+
 main : Signal Element
 main = 
   flip Signal.lift cameraMatrix (\cameraMatrixValue ->
