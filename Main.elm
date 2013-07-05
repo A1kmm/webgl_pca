@@ -264,7 +264,7 @@ updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
                   in
                     { oldMoveState | cameraQuaternion <-
                       normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
-                      processedPosition <- (pointer.x, pointer.y) }
+                      processedPosition <- (pointer.x, pointer.y), cameraModifyMode <- newCameraModifyMode }
                 CameraTranslate plane ->
                   let
                     (lastX, lastY) = oldMoveState.processedPosition
@@ -278,7 +278,7 @@ updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
                   in
                     { oldMoveState |
                         cameraTransformation <- (otx + tx, oty + ty, otz + tz),
-                        processedPosition <- (pointer.x, pointer.y) }
+                        processedPosition <- (pointer.x, pointer.y), cameraModifyMode <- newCameraModifyMode }
 
 cameraMatrix : Signal Matrix4x4
 cameraMatrix = Signal.lift (\x ->
