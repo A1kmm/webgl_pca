@@ -29,7 +29,7 @@ data GLPrimSceneView = GLPrimSceneView {
   diffuseDirection: (Float, Float, Float) -- The diffuse light direction vector.
   }
 
--- A Zinc object views a model according to settings.
+-- Constructs a WebGL element to view a model according to settings.
 glSceneObject : Int -> Int -> GLPrimModel -> GLPrimSceneView -> Element
 glSceneObject = N.glSceneObject
 
@@ -94,6 +94,9 @@ transpose4x4 (Matrix4x4 [x11,x12,x13,x14,
 norm4 : [Float] -> [Float]
 norm4 [x1, x2, x3, x4] = [x1/x4, x2/x4, x3/x4]
 
+to3Tuple : [Float] -> (Float, Float, Float)
+to3Tuple [x,y,z,_] = (x,y,z)
+
 quaternionToRotationMatrix (Quaternion (a, b, c, d)) =
   Matrix4x4 [1 - 2 * (c * c + d * d), 2 * (b * c + a * d),     2 * (b * d - a * c),     0,
              2 * (b * c - a * d),     1 - 2 * (b * b + d * d), 2 * (c * d + a * b),     0,
@@ -146,8 +149,8 @@ vectorToTransformMatrix (x, y, z) =
 
 lowVal = 0-0.8
 highVal = 0.8
-lowZ = 2
-highZ = 3.6
+lowZ = 0-0.8
+highZ = 0.8
 
 myPrimModel =
   let
@@ -162,7 +165,7 @@ myPrimModel =
     crta = Coord3D highVal highVal highZ
     quad a b c d = [Triangle a b c, Triangle a c d]
   in
-   GLPrimModel {     
+   GLPrimModel {
      -- Vertex ordering: anti-clockwise around external surface.
      primitives =
         quad clbf crbf crtf cltf ++ -- front
@@ -196,7 +199,7 @@ type CameraMoveState = { cameraQuaternion: Quaternion, cameraTransformation: (Fl
                          cameraModifyMode: CameraModifyMode }
 initialCameraMoveState : CameraMoveState
 initialCameraMoveState = { cameraQuaternion = Quaternion (1,0,0,0),
-                           cameraTransformation = (0, 0, 0),
+                           cameraTransformation = (0, 0, 3.0),
                            processedPosition = (0,0), mouseWasDown = False, 
                            cameraModifyMode = CameraRotate }
 
@@ -222,7 +225,7 @@ updateCameraMoveState (mouseDown, shift, ctrl, (mouseX, mouseY) as mousePos) old
                 rotQuaternion = eulerToQuaternion phi 0 theta
               in
                 { oldMoveState | cameraQuaternion <-
-                  normaliseQuaternion (rotQuaternion `multiplyQuaternion` oldMoveState.cameraQuaternion),
+                  normaliseQuaternion (oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion),
                   processedPosition <- mousePos }
             CameraTransform plane ->
               let
@@ -233,16 +236,27 @@ updateCameraMoveState (mouseDown, shift, ctrl, (mouseX, mouseY) as mousePos) old
                                 TransformXY -> (distanceX, 0-distanceY, 0)
                                 TransformXZ -> (distanceX, 0, distanceY)
                 (otx, oty, otz) = oldMoveState.cameraTransformation
-                (tx, ty, tz) = rotateVectorByQuaternion (oldMoveState.cameraQuaternion) transformBy
+                (tx, ty, tz) = {- rotateVectorByQuaternion (oldMoveState.cameraQuaternion) -} transformBy
               in
                 { oldMoveState |
                     cameraTransformation <- (otx + tx, oty + ty, otz + tz),
                     processedPosition <- mousePos }
 
 cameraMatrix : Signal Matrix4x4
-cameraMatrix = Signal.lift (\x -> quaternionToRotationMatrix x.cameraQuaternion
+cameraMatrix = Signal.lift (\x -> vectorToTransformMatrix x.cameraTransformation
                                     `multiply4x4`
-                                  vectorToTransformMatrix x.cameraTransformation) cameraMoveState
+                                  quaternionToRotationMatrix x.cameraQuaternion
+                                  ) cameraMoveState
+
+{-
+-- There are 16 elements in the LV model; this identifies one.
+data ElementID = ElementID Int
+-- This identifies a parameter from the set of 40 parameters used for mu or lambda.
+data GlobalMuLambda = GlobalMuLambda Int
+-- This identifies a parameter from the set of 134 parameters used for theta.
+data GlobalTheta = GlobalTheta Int
+-- This identifies one of the 8 local nodes used for 
+-}
 
 canvasWidth : Int
 canvasWidth = 500
