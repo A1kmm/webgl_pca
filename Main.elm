@@ -30,7 +30,7 @@ data GLPrimSceneView = GLPrimSceneView {
   diffuseDirection: (Float, Float, Float) -- The diffuse light direction vector.
   }
 
--- A Zinc object views a model according to settings.
+-- Constructs a WebGL element to view a model according to settings.
 glSceneObject : Int -> Int -> GLPrimModel -> GLPrimSceneView -> Element
 glSceneObject = N.glSceneObject
 
@@ -141,8 +141,8 @@ multiplyQuaternion (Quaternion (a1, b1, c1, d1)) (Quaternion (a2, b2, c2, d2)) =
               b1 * c2 - c1 * b2 + a1 * d2 + d1 * a2)
 conjugateQuaternion (Quaternion (a, b, c, d)) = Quaternion (a, 0-b, 0-c, 0-d)
 
-inverseRotateVectorByQuaternion : Quaternion -> (Float, Float, Float) -> (Float, Float, Float)
-inverseRotateVectorByQuaternion q (x,y,z) =
+rotateVectorByQuaternion : Quaternion -> (Float, Float, Float) -> (Float, Float, Float)
+rotateVectorByQuaternion q (x,y,z) =
   let
     Quaternion (_, x', y', z') =
       q `multiplyQuaternion` (Quaternion (0, x, y, z)) `multiplyQuaternion` (conjugateQuaternion q)
@@ -172,31 +172,33 @@ vectorToTransformMatrix (x, y, z) =
              0, 0, 1, z,
              0, 0, 0, 1]
 
-myCubeSizeHalf = 2.0
+lowVal = 0-0.8
+highVal = 0.8
+lowZ = 0-0.8
+highZ = 0.8
 
 myPrimModel =
   let
-    -- lower case means a negative, upper case means a positive, e.g. xYZ is the negative for x, but positive for Y and Z
-    cxyz = Coord3D (0 - myCubeSizeHalf) (0 - myCubeSizeHalf) (0 - myCubeSizeHalf)
-    cXyz = Coord3D      myCubeSizeHalf  (0 - myCubeSizeHalf) (0 - myCubeSizeHalf)
-    cxYz = Coord3D (0 - myCubeSizeHalf)      myCubeSizeHalf  (0 - myCubeSizeHalf)
-    cXYz = Coord3D      myCubeSizeHalf       myCubeSizeHalf  (0 - myCubeSizeHalf)
-    cxyZ = Coord3D (0 - myCubeSizeHalf) (0 - myCubeSizeHalf)      myCubeSizeHalf
-    cXyZ = Coord3D      myCubeSizeHalf  (0 - myCubeSizeHalf)      myCubeSizeHalf
-    cxYZ = Coord3D (0 - myCubeSizeHalf)      myCubeSizeHalf       myCubeSizeHalf
-    cXYZ = Coord3D      myCubeSizeHalf       myCubeSizeHalf       myCubeSizeHalf
-
+    -- l = left, r = right, b = bottom, t = top, f = front, a = back.
+    clbf = Coord3D lowVal lowVal lowZ
+    crbf = Coord3D highVal lowVal lowZ
+    cltf = Coord3D lowVal highVal lowZ
+    crtf = Coord3D highVal highVal lowZ
+    clba = Coord3D lowVal lowVal highZ
+    crba = Coord3D highVal lowVal highZ
+    clta = Coord3D lowVal highVal highZ
+    crta = Coord3D highVal highVal highZ
     quad a b c d = [Triangle a b c, Triangle a c d]
   in
-   GLPrimModel {     
+   GLPrimModel {
      -- Vertex ordering: anti-clockwise around external surface.
      primitives =
-        quad cXYZ cxYZ cxyZ cXyZ ++ -- +Z face
-        quad cXyz cxyz cxYz cXYz ++ -- -Z face
-        quad cXYZ cXyZ cXyz cXYz ++ -- +X face
-        quad cxYz cxyz cxyZ cxYZ ++ -- -X face
-        quad cXYZ cXYz cxYz cxYZ ++ -- +Y face
-        quad cxyZ cxyz cXyz cXyZ ++ -- -Y face
+        quad clbf crbf crtf cltf ++ -- front
+        quad clba clbf cltf clta ++ -- left
+        quad crbf crba crta crtf ++ -- right
+        quad clba clta crta crba ++ -- back
+        quad cltf crtf crta clta ++ -- top
+        quad crbf clbf clba crba ++ -- bottom
         []
                }
 
@@ -294,6 +296,16 @@ cameraMatrix = Signal.lift (\x ->
      `multiply4x4`
   quaternionToRotationMatrix x.cameraQuaternion
   ) cameraMoveState
+
+{-
+-- There are 16 elements in the LV model; this identifies one.
+data ElementID = ElementID Int
+-- This identifies a parameter from the set of 40 parameters used for mu or lambda.
+data GlobalMuLambda = GlobalMuLambda Int
+-- This identifies a parameter from the set of 134 parameters used for theta.
+data GlobalTheta = GlobalTheta Int
+-- This identifies one of the 8 local nodes used for 
+-}
 
 canvasWidth : Int
 canvasWidth = 500
