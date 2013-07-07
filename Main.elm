@@ -173,7 +173,7 @@ myPrimModel =
         quad crbf crba crta crtf ++ -- right
         quad clba clta crta crba ++ -- back
         quad cltf crtf crta clta ++ -- top
-        quad clbf crbf crba clba ++ -- bottom
+        quad crbf clbf clba crba ++ -- bottom
         []
                }
 
