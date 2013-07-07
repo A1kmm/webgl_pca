@@ -259,7 +259,8 @@ updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
                                 cameraModifyMode <- newCameraModifyMode}
             else
               let
-                pointer = head <| filter (\t -> t.id == oldMoveState.mainTouch.id ) touches
+                previousPointCatcher = filter (\t -> t.id == oldMoveState.mainTouch.id ) touches
+                pointer = if length previousPointCatcher > 0 then head previousPointCatcher else head touches
                 (lastX, lastY) = oldMoveState.processedPosition
               in
                 case oldMoveState.cameraModifyMode of
@@ -272,7 +273,7 @@ updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
                     in
                       { oldMoveState | cameraQuaternion <-
                         normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
-                        processedPosition <- (pointer.x, pointer.y), cameraModifyMode <- newCameraModifyMode }
+                        processedPosition <- (pointer.x, pointer.y), cameraModifyMode <- newCameraModifyMode, mainTouch <- pointer }
                   CameraTranslate plane ->
                     let
                       distanceX = (toFloat (pointer.x - lastX)) / (toFloat canvasWidth)
@@ -285,7 +286,7 @@ updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
                     in
                       { oldMoveState |
                           cameraTransformation <- (otx + tx, oty + ty, otz + tz),
-                          processedPosition <- (pointer.x, pointer.y), cameraModifyMode <- newCameraModifyMode }
+                          processedPosition <- (pointer.x, pointer.y), cameraModifyMode <- newCameraModifyMode, mainTouch <- pointer }
 
 cameraMatrix : Signal Matrix4x4
 cameraMatrix = Signal.lift (\x ->
