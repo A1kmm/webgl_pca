@@ -225,7 +225,7 @@ type CameraMoveState = { cameraQuaternion: Quaternion, cameraTransformation: (Fl
                          processedPosition: (Int, Int),
                          mainTouch: Touch, 
                          wasDragging: Bool, 
-                         cameraModifyMode: CameraModifyMode }
+                         cameraModifyMode: CameraModifyMode, debug: [Float] }
 
 initialCameraMoveState : CameraMoveState
 initialCameraMoveState = { cameraQuaternion = Quaternion (1,0,0,0),
@@ -233,7 +233,8 @@ initialCameraMoveState = { cameraQuaternion = Quaternion (1,0,0,0),
                            processedPosition = (0,0), 
                            mainTouch = { x = 0, y = 0, id = 0, x0 = 0, y0 = 0, t0 = 0 },
                            wasDragging = False,
-                           cameraModifyMode = CameraRotate }
+                           cameraModifyMode = CameraRotate,
+                           debug = [] }
 
 keyboardAlt : [KeyCode] -> Bool
 keyboardAlt keysDown = any (\x -> x == 18) keysDown 
@@ -269,23 +270,25 @@ updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
                     let
                       -- Moving the mouse all the way across rotates 1 radian.
                       
-                      xProportional = clamp (0-1) 1 (2 * ((toFloat pointer.x) / (toFloat canvasWidth))  - 1)
-                      yProportional = clamp (0-1) 1 (2 * ((toFloat pointer.y) / (toFloat canvasHeight)) - 1) 
-                      radiusSquared = (xProportional * xProportional) + (yProportional * yProportional)
-                      alpha = radiusSquared / 2.0
+                      x = 2 * ((toFloat pointer.x) / (toFloat canvasWidth))  - 1
+                      y = 2 * ((toFloat pointer.y) / (toFloat canvasHeight)) - 1 
+                      modPositionVector = sqrt( (x * x) + (y * y) )
 
-                      xChange = (toFloat (lastX - pointer.x)) / (toFloat canvasWidth)
-                      yChange = (toFloat (lastY - pointer.y)) / (toFloat canvasHeight)
+                      xChange = 2 * (toFloat (lastX - pointer.x)) / (toFloat canvasWidth)
+                      yChange = 2 * (toFloat (lastY - pointer.y)) / (toFloat canvasHeight)
+                      modChangeVector = sqrt( (xChange * xChange) + (yChange * yChange) )
+ 
+                      alpha = if modChangeVector > 0.0 && modPositionVector > 0 then abs(x * xChange + y * yChange)/modChangeVector/modPositionVector else 1.0
 
-                      phi   = 2 * (1.0 - alpha) * xChange
-                      theta = 2 * (1.0 - alpha ) * yChange
-                      psi   = 2 * ((yProportional * xChange) - (xProportional * yChange))
+                      phi   = alpha * xChange
+                      theta = alpha * yChange
+                      psi   = ((y * xChange) - (x * yChange))
 
                       rotQuaternion = eulerToQuaternion phi psi theta
                     in
                       { oldMoveState | cameraQuaternion <-
                         normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
-                        processedPosition <- (pointer.x, pointer.y), cameraModifyMode <- newCameraModifyMode, mainTouch <- pointer }
+                        processedPosition <- (pointer.x, pointer.y), cameraModifyMode <- newCameraModifyMode, mainTouch <- pointer, debug <- [x,y,xChange,yChange,modChangeVector,modPositionVector,alpha,phi,theta,psi] }
                   CameraTranslate plane ->
                     let
                       distanceX = (toFloat (pointer.x - lastX)) / (toFloat canvasWidth)
@@ -326,7 +329,7 @@ initialDiffuseDirection = [0-0.3, 0-0.5, 0-0.8, 1]
 
 main : Signal Element
 main = 
-  pureMain <~ cameraMatrix
+  pureMain <~ cameraMatrix ~ cameraMoveState
 
 scene cameraMatrixValue = 
     let
@@ -342,5 +345,8 @@ scene cameraMatrixValue =
                               diffuseIntensity = 0.5,
                               diffuseDirection = rotatedDiffuseDirection })))
 
-pureMain cameraMatrix = scene cameraMatrix
+pureMain cameraMatrix cameraMoveState = 
+  (scene cameraMatrix)
+  `above`
+  ((flow down . map asText) cameraMoveState.debug)
 
