@@ -326,7 +326,7 @@ initialDiffuseDirection = [0.3, 0.5, 0.8, 1]
 
 main : Signal Element
 main = 
-  pureMain <~ cameraMatrix ~ Touch.touches
+  pureMain <~ cameraMatrix ~ Touch.touches ~ Keyboard.keysDown
 
 scene cameraMatrixValue = 
     let
@@ -345,7 +345,9 @@ scene cameraMatrixValue =
 touchesDisplay touches =       
         (flow down . map asText) touches
 
-pureMain cameraMatrix touches =
+pureMain cameraMatrix touches keys =
  (scene cameraMatrix)
  `above`
  (touchesDisplay touches)
+ `above`
+ (plainText "You are holding down the following keys: " `beside` asText keys)
