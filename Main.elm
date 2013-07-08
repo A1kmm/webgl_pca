@@ -278,9 +278,9 @@ updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
                       xChange = (toFloat (lastX - pointer.x)) / (toFloat canvasWidth)
                       yChange = (toFloat (lastY - pointer.y)) / (toFloat canvasHeight)
 
-                      phi   = (1.0 - alpha) * xChange
-                      theta = (1.0 - alpha ) * yChange
-                      psi   = (yProportional * xChange) - (xProportional * yChange)
+                      phi   = 2 * (1.0 - alpha) * xChange
+                      theta = 2 * (1.0 - alpha ) * yChange
+                      psi   = 2 * ((yProportional * xChange) - (xProportional * yChange))
 
                       rotQuaternion = eulerToQuaternion phi psi theta
                     in
