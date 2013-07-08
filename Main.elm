@@ -2,7 +2,6 @@ import Native.Graphics.WebGLScene as N
 import Dict as D
 import Mouse
 import Keyboard
-import Signal
 import Touch
 
 data BasisFunction = CONSTANT | LINEAR_LAGRANGE | QUADRATIC_LAGRANGE |
@@ -327,16 +326,26 @@ initialDiffuseDirection = [0.3, 0.5, 0.8, 1]
 
 main : Signal Element
 main = 
-  flip Signal.lift cameraMatrix (\cameraMatrixValue ->
+  pureMain <~ cameraMatrix ~ Touch.touches
+
+scene cameraMatrixValue = 
     let
       camPerspect = myPerspectiveMatrix `multiply4x4` cameraMatrixValue
       rotatedDiffuseDirection = tuple3FromList <| (mat4ToInverseMat3 cameraMatrixValue) `mat4x4xv` initialDiffuseDirection 
     in
+      (
+        (glSceneObject canvasWidth canvasHeight myPrimModel 
+           (GLPrimSceneView { projection = transpose4x4 camPerspect,
+                              ambientColour = GLColour 1 1 1,
+                              diffuseColour = GLColour 1 0.5 0.5,
+                              ambientIntensity = 0.4,
+                              diffuseIntensity = 0.5,
+                              diffuseDirection = rotatedDiffuseDirection })))
 
-    (glSceneObject canvasWidth canvasHeight myPrimModel 
-       (GLPrimSceneView { projection = transpose4x4 camPerspect,
-                          ambientColour = GLColour 1 1 1,
-                          diffuseColour = GLColour 1 0.5 0.5,
-                          ambientIntensity = 0.4,
-                          diffuseIntensity = 0.5,
-                          diffuseDirection = rotatedDiffuseDirection })))
+touchesDisplay touches =       
+        (flow down . map asText) touches
+
+pureMain cameraMatrix touches =
+ (scene cameraMatrix)
+ `above`
+ (touchesDisplay touches)
