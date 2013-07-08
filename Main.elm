@@ -322,7 +322,7 @@ canvasWidth = 500
 canvasHeight : Int
 canvasHeight = 500
 
-initialDiffuseDirection = [0.3, 0.5, 0.8, 1]
+initialDiffuseDirection = [0-0.3, 0-0.5, 0-0.8, 1]
 
 main : Signal Element
 main = 

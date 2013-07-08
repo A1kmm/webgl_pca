@@ -15,7 +15,7 @@ Elm.Native.Graphics.WebGLScene = function(elm) {
                         varying mediump vec3 normal;\
                         uniform mediump mat4 aProjection;\
                         void main(void) {\
-                          normal = normalize((vec4(aNormal, 1.0) * aProjection).xyz);\
+                          normal = normalize(aNormal);\
                           gl_Position = aProjection * vec4(aPos, 1.0); \
                         }";
     // For now, everything is green.
@@ -24,11 +24,10 @@ Elm.Native.Graphics.WebGLScene = function(elm) {
          uniform mediump vec3 aAmbientColour, aDiffuse1Colour;\
          uniform mediump vec3 aDiffuse1Direction;\
          uniform mediump float aAmbientIntensity, aDiffuse1Intensity;\
-         uniform mediump mat4 aProjection;\
          void main(void) {\
            mediump vec3 rgb = aAmbientColour * aAmbientIntensity +\
                       aDiffuse1Colour * aDiffuse1Intensity * \
-                      clamp(dot(normal, normalize((aProjection * vec4(aDiffuse1Direction, 0.0)).xyz)), 0.0, 1.0);\
+                      clamp(dot(normalize(normal), normalize(aDiffuse1Direction)), 0.0, 1.0);\
            gl_FragColor = vec4(rgb, 1.0);\
                          }"
 
