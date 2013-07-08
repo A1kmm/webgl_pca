@@ -269,9 +269,20 @@ updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
                   CameraRotate ->
                     let
                       -- Moving the mouse all the way across rotates 1 radian.
-                      phi   = (toFloat (lastX - pointer.x)) / (toFloat canvasWidth)
-                      theta = (toFloat (lastY - pointer.y)) / (toFloat canvasHeight)
-                      rotQuaternion = eulerToQuaternion phi 0 theta
+                      
+                      xProportional = 2 * ((toFloat pointer.x) / (toFloat canvasWidth))  - 1
+                      yProportional = 2 * ((toFloat pointer.y) / (toFloat canvasHeight)) - 1 
+                      radiusSquared = (xProportional * xProportional) + (yProportional * yProportional)
+                      alpha = radiusSquared / 2.0
+
+                      xChange = (toFloat (lastX - pointer.x)) / (toFloat canvasWidth)
+                      yChange = (toFloat (lastY - pointer.y)) / (toFloat canvasHeight)
+
+                      phi   = (1.0 - alpha) * xChange
+                      theta = (1.0 - alpha ) * yChange
+                      psi   = (yProportional * xChange) - (xProportional * yChange)
+
+                      rotQuaternion = eulerToQuaternion phi psi theta
                     in
                       { oldMoveState | cameraQuaternion <-
                         normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
