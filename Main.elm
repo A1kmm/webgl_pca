@@ -229,7 +229,7 @@ type CameraMoveState = { cameraQuaternion: Quaternion, cameraTransformation: (Fl
 
 initialCameraMoveState : CameraMoveState
 initialCameraMoveState = { cameraQuaternion = Quaternion (1,0,0,0),
-                           cameraTransformation = (0, 0, 0-10),
+                           cameraTransformation = (0, 0, 0-4),
                            processedPosition = (0,0), 
                            mainTouch = { x = 0, y = 0, id = 0, x0 = 0, y0 = 0, t0 = 0 },
                            wasDragging = False,
@@ -326,7 +326,7 @@ initialDiffuseDirection = [0.3, 0.5, 0.8, 1]
 
 main : Signal Element
 main = 
-  pureMain <~ cameraMatrix ~ Touch.touches ~ Keyboard.keysDown
+  pureMain <~ cameraMatrix
 
 scene cameraMatrixValue = 
     let
@@ -342,12 +342,5 @@ scene cameraMatrixValue =
                               diffuseIntensity = 0.5,
                               diffuseDirection = rotatedDiffuseDirection })))
 
-touchesDisplay touches =       
-        (flow down . map asText) touches
+pureMain cameraMatrix = scene cameraMatrix
 
-pureMain cameraMatrix touches keys =
- (scene cameraMatrix)
- `above`
- (touchesDisplay touches)
- `above`
- (plainText "You are holding down the following keys: " `beside` asText keys)
