@@ -1,12 +1,16 @@
 import Native.Graphics.WebGLScene as N
-import Dict as D
+import Dict
 import Mouse
 import Keyboard
 import Signal
+import Http (Success, Waiting, Failure)
+import Json
+import JavaScript.Experimental
 
 data BasisFunction = CONSTANT | LINEAR_LAGRANGE | QUADRATIC_LAGRANGE |
                      CUBIC_LAGRANGE | LINEAR_SIMPLEX | QUADRATIC_SIMPLEX
 type Element = Int
+-- 3D cartesian coordinates.
 data Coord3D = Coord3D Float Float Float
 data Triangle = Triangle Coord3D Coord3D Coord3D
 data Shape = LINE | SQUARE | TRIANGLE | CUBE | TETRAHEDRON | WEDGE12 | WEDGE13 | WEDGE23
@@ -176,7 +180,7 @@ highVal = 0.8
 lowZ = 0-0.8
 highZ = 0.8
 
-myPrimModel =
+placeholderModel =
   let
     -- l = left, r = right, b = bottom, t = top, f = front, a = back.
     clbf = Coord3D lowVal lowVal lowZ
@@ -216,7 +220,7 @@ perspectiveMatrix near far aspectRatio fovRadians =
       ]
 
 myPerspectiveMatrix : Matrix4x4
-myPerspectiveMatrix = perspectiveMatrix 0.01 15 1 myFovRadians
+myPerspectiveMatrix = perspectiveMatrix 0.01 1000 1 myFovRadians
 
 data TranslationPlane = TranslateXY | TranslateXZ
 data CameraModifyMode = CameraRotate | CameraTranslate TranslationPlane
@@ -226,7 +230,7 @@ type CameraMoveState = { cameraQuaternion: Quaternion, cameraTransformation: (Fl
                          cameraModifyMode: CameraModifyMode }
 initialCameraMoveState : CameraMoveState
 initialCameraMoveState = { cameraQuaternion = Quaternion (1,0,0,0),
-                           cameraTransformation = (0, 0, 0-10),
+                           cameraTransformation = (0, 0, 0-200),
                            processedPosition = (0,0), mouseWasDown = False, 
                            cameraModifyMode = CameraRotate }
 
@@ -260,8 +264,8 @@ updateCameraMoveState (mouseDown, shift, ctrl, keysDown, (mouseX, mouseY) as mou
             CameraTranslate plane ->
               let
                 (lastX, lastY) = oldMoveState.processedPosition
-                distanceX = (toFloat (mouseX - lastX)) / (toFloat canvasWidth)
-                distanceY = (toFloat (mouseY - lastY)) / (toFloat canvasHeight)
+                distanceX = (toFloat (mouseX - lastX)) / (toFloat canvasWidth) * 50.0
+                distanceY = (toFloat (mouseY - lastY)) / (toFloat canvasHeight) * 50.0
                 translateBy = case plane of
                                 TranslateXY -> (distanceX, 0-distanceY, 0)
                                 TranslateXZ -> (distanceX, 0, distanceY)
@@ -279,15 +283,28 @@ cameraMatrix = Signal.lift (\x ->
   quaternionToRotationMatrix x.cameraQuaternion
   ) cameraMoveState
 
-{-
--- There are 16 elements in the LV model; this identifies one.
-data ElementID = ElementID Int
 -- This identifies a parameter from the set of 40 parameters used for mu or lambda.
 data GlobalMuLambda = GlobalMuLambda Int
 -- This identifies a parameter from the set of 134 parameters used for theta.
 data GlobalTheta = GlobalTheta Int
--- This identifies one of the 8 local nodes used for 
--}
+
+-- There are 16 elements in the LV model; this identifies one (1..16).
+data ElementID = ElementID Int
+-- There are 16 local nodes in the bicubic interpolation (1..16)
+data BicubicLocalNode = BicubicLocalNode Int
+-- There are 4 local nodes in the bilinear interpolation (1..4)
+data BilinearLocalNode = BilinearLocalNode Int
+-- There are two surfaces - endo and epicardial.
+data Surface = Endocardial | Epicardial
+
+-- For graphical purposes, we refine each element into 3*3 quads, each containing
+-- 4x4 nodes. This identifies one of those nodes within an element (as a number in
+-- [1,16]).
+data RefinedNodeID = RefinedNodeID Int
+
+-- A prolate spheriodal coordinate, given a fixed focal length.
+data Prolate = Prolate { lambda: Float, mu: Float, theta: Float }
+data Xi = Xi (Float, Float)
 
 canvasWidth : Int
 canvasWidth = 500
@@ -296,18 +313,147 @@ canvasHeight = 500
 
 initialDiffuseDirection = [0.3, 0.8, 0 - 0.5, 1]
 
+baseModel = Signal.lift lvResponseToModel (Http.sendGet (Signal.constant "../LV.json"))
+
+surfaceToInt x = case x of
+  Endocardial -> 0
+  Epicardial -> 1
+
+nElements = 16
+nBicubicLocalNodes = 16
+nBilinearLocalNodes = 4
+
+localNodeIndexBicubic : BicubicLocalNode -> ElementID -> Surface -> Int
+localNodeIndexBicubic (BicubicLocalNode lnID) (ElementID elID) surf =
+  (surfaceToInt surf) * nElements * nBicubicLocalNodes + (elID - 1) * nBicubicLocalNodes + (lnID - 1)
+
+localNodeIndexBilinear : BilinearLocalNode -> ElementID -> Surface -> Int
+localNodeIndexBilinear (BilinearLocalNode lnID) (ElementID elID) surf =
+  (surfaceToInt surf) * nElements * nBilinearLocalNodes + (elID - 1) * nBicubicLocalNodes + (lnID - 1)
+
+allRefinedNodes : [RefinedNodeID]
+allRefinedNodes = map RefinedNodeID [1..16]
+
+allElements : [ElementID]
+allElements = map ElementID [1..nElements]
+
+allSurfaces : [Surface]
+allSurfaces = [Endocardial, Epicardial]
+
+refinedNodeToXiCoordinates : RefinedNodeID -> Xi
+refinedNodeToXiCoordinates (RefinedNodeID rnid) =
+  let
+    rnid0 = rnid - 1
+    col = rnid0 `mod` 4
+    row = rnid `div` 4
+  in
+   Xi ((toFloat col) * 0.333333333333333333333,
+       (toFloat row) * 0.333333333333333333333)
+
+cosh : Float -> Float
+cosh x = (exp x + exp (0-x)) * 0.5
+sinh : Float -> Float
+sinh x = (exp x - exp (0-x)) * 0.5
+
+-- Converts prolate spheroidal to cartesian
+prolateToCartesian : Float -> Prolate -> Coord3D
+prolateToCartesian focalLength (Prolate { lambda, mu, theta }) =
+  Coord3D (focalLength * cosh lambda * cos mu) (focalLength * sinh lambda * sin mu * cos theta)
+          (focalLength * sinh lambda * sin mu * sin theta)
+
+
+lvResponseToModel : Response String -> GLPrimModel
+lvResponseToModel resp =
+  case resp of
+    Waiting -> placeholderModel
+    Failure _ _ -> placeholderModel
+    Success raw ->
+      case Json.fromString raw of
+        Nothing -> placeholderModel
+        Just m ->
+          let
+            rawData : { localToGlobalMuTheta: [{loc: Int, glob: Int}],
+                        localToGlobalLambda: [{loc: Int, globs: [{glob: Int, mup: Float}]}],
+                        distributions: [{dataset: String, coordScheme: String, analysis: String,
+                                         biologicalState: String, components: Int,
+                                         averages: { flength: Float, lambdas: [Float], mus: [Float],
+                                                     thetas: [Float]}}] }
+            rawData = JavaScript.Experimental.toRecord (Json.toJSObject m)
+            bilinearLocalToGlobalMap = Dict.fromList . map (\x -> (x.loc, x.glob))  <| rawData.localToGlobalMuTheta
+            bicubicLocalToGlobalsMap = Dict.fromList . map (\x -> (x.loc, x.globs))  <| rawData.localToGlobalLambda
+            bilinearLookupValue values elid surf ln =
+              Dict.findWithDefault 0 (Dict.findWithDefault 0 (localNodeIndexBilinear ln elid surf)
+                                   bilinearLocalToGlobalMap) values
+            bicubicLookupValue values elid surf ln =
+              sum <|
+                map (\gm -> gm.mup * Dict.findWithDefault 0 gm.glob values)
+                    (Dict.findWithDefault [] (localNodeIndexBicubic ln elid surf) bicubicLocalToGlobalsMap)
+            baseLambdaValues = Dict.fromList (zip [1..512] (head rawData.distributions).averages.lambdas)
+            baseMuValues = Dict.fromList (zip [1..128] (head rawData.distributions).averages.mus)
+            baseThetaValues = Dict.fromList (zip [1..128] (head rawData.distributions).averages.thetas)
+            lookupLambdaValue : ElementID -> Surface -> BicubicLocalNode -> Float
+            lookupLambdaValue = bicubicLookupValue baseLambdaValues
+            lookupMuValue : ElementID -> Surface -> BilinearLocalNode -> Float
+            lookupMuValue = bilinearLookupValue baseMuValues
+            lookupThetaValue : ElementID -> Surface -> BilinearLocalNode -> Float
+            lookupThetaValue = bilinearLookupValue baseThetaValues
+            doBilinearInterpolation : (BilinearLocalNode -> Float) -> Xi -> Float
+            doBilinearInterpolation f (Xi (xi0, xi1)) =
+              let
+                f00 = f (BilinearLocalNode 1)
+                f10 = f (BilinearLocalNode 2)
+                f01 = f (BilinearLocalNode 3)
+                f11 = f (BilinearLocalNode 4)
+              in
+                f00 * (1 - xi0) * (1 - xi1) + f10 * xi0 * (1 - xi1) + f01 * (1 - xi0) * xi1 + f11 * xi0 * xi1
+
+            prolateCoords : ElementID -> Surface -> RefinedNodeID -> Prolate
+            prolateCoords elid surf rnid =
+              let
+                -- We take a shortcut here: instead of doing bicubic interpolation,
+                -- we notice that all the points we want fall exactly on local nodes
+                -- used by the interpolations, so we look up values instead of
+                -- interpolating.
+                bicubicNode = (\(RefinedNodeID i) -> BicubicLocalNode i) rnid
+                xi = refinedNodeToXiCoordinates rnid
+               in
+                Prolate { lambda = lookupLambdaValue elid surf bicubicNode,
+                          mu = doBilinearInterpolation (lookupMuValue elid surf) xi,
+                          theta = doBilinearInterpolation (lookupThetaValue elid surf) xi }
+            rcCoords : ElementID -> Surface -> RefinedNodeID -> Coord3D
+            rcCoords elID surf rnID = prolateToCartesian (head rawData.distributions).averages.flength
+                                                         (prolateCoords elID surf rnID)
+            elementPrims elID surf =
+              let 
+                [n11,n12,n13,n14,
+                 n21,n22,n23,n24,
+                 n31,n32,n33,n34,
+                 n41,n42,n43,n44] = map (rcCoords elID surf) allRefinedNodes
+              in
+                [Triangle n11 n21 n12, Triangle n12 n21 n22, Triangle n12 n22 n13, Triangle n13 n22 n23,
+                 Triangle n13 n23 n14, Triangle n14 n23 n24,
+                 Triangle n21 n31 n22, Triangle n22 n31 n32, Triangle n22 n32 n23, Triangle n23 n32 n33,
+                 Triangle n23 n33 n24, Triangle n24 n33 n34,
+                 Triangle n31 n41 n32, Triangle n32 n41 n42, Triangle n32 n42 n33, Triangle n33 n42 n43,
+                 Triangle n33 n43 n34, Triangle n34 n43 n44]
+          in
+           GLPrimModel { primitives =
+                           concatMap (\surf -> concatMap (\elID -> elementPrims elID surf) allElements)
+                                     allSurfaces }
+
 main : Signal Element
 main = 
-  flip Signal.lift cameraMatrix (\cameraMatrixValue ->
+  flip (flip Signal.lift2 cameraMatrix) baseModel (\cameraMatrixValue baseModelValue ->
     let
       camPerspect = myPerspectiveMatrix `multiply4x4` cameraMatrixValue
-      rotatedDiffuseDirection = tuple3FromList <| (mat4ToInverseMat3 cameraMatrixValue) `mat4x4xv` initialDiffuseDirection 
+      rotatedDiffuseDirection = tuple3FromList <| (mat4ToInverseMat3 cameraMatrixValue) `mat4x4xv` initialDiffuseDirection
     in
-
-    (glSceneObject canvasWidth canvasHeight myPrimModel 
+     -- plainText (show baseModelValue)
+     (glSceneObject canvasWidth canvasHeight baseModelValue
        (GLPrimSceneView { projection = transpose4x4 camPerspect,
                           ambientColour = GLColour 1 1 1,
-                          diffuseColour = GLColour 1 0.5 0.5,
+                          diffuseColour = GLColour 1 1 1,
                           ambientIntensity = 0.4,
-                          diffuseIntensity = 0.5,
-                          diffuseDirection = rotatedDiffuseDirection })))
+                          diffuseIntensity = 0.3,
+                          diffuseDirection = rotatedDiffuseDirection }))
+                                                  )
