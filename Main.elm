@@ -270,8 +270,8 @@ updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
                     let
                       -- Moving the mouse all the way across rotates 1 radian.
                       
-                      xProportional = 2 * ((toFloat pointer.x) / (toFloat canvasWidth))  - 1
-                      yProportional = 2 * ((toFloat pointer.y) / (toFloat canvasHeight)) - 1 
+                      xProportional = clamp (0-1) 1 (2 * ((toFloat pointer.x) / (toFloat canvasWidth))  - 1)
+                      yProportional = clamp (0-1) 1 (2 * ((toFloat pointer.y) / (toFloat canvasHeight)) - 1) 
                       radiusSquared = (xProportional * xProportional) + (yProportional * yProportional)
                       alpha = radiusSquared / 2.0
 
