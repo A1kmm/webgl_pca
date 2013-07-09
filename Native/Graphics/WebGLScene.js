@@ -140,7 +140,6 @@ Elm.Native.Graphics.WebGLScene = function(elm) {
 
         if (sceneChanged) {
             var sv = next.sceneview._0;
-            console.log(sv.projection);
             jscanvas.ctx.uniformMatrix4fv(jscanvas.shadeData.aProjection, false,
                                           [sv.projection._0._0, sv.projection._1._0, sv.projection._2._0, sv.projection._3._0,
                                            sv.projection._0._1, sv.projection._1._1, sv.projection._2._1, sv.projection._3._1,
