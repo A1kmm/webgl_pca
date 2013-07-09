@@ -85,9 +85,49 @@ Elm.Native.FastJSON = function(elm) {
         return loc;
     }
 
+    function trilinearInterpolate(f, xi) {
+        var result = 0.0;
+        xi = xi._0;
+        var basisTable = [[1 - xi._0, xi._0], [1 - xi._1, xi._1], [1 - xi._2, xi._2]];
+        for (var i = 0; i < 2; i++) {
+            for (var j = 0; j < 2; j++) {
+                for (var k = 0; k < 2; k++) {
+                    result += basisTable[0][i] * basisTable[1][j] * basisTable[2][k] * f({ctor: "TrilinearLocalNode", _0: i + j * 2 + k * 4 + 1});
+                }
+            }
+        }
+        return result;
+    }
+
+    function bicubicLinearInterpolate(f, xi) {
+        var result = 0.0;
+        xi = xi._0;
+        // console.log(xi);
+        var xi0_2 = xi._0 * xi._0, xi0_3 = xi0_2 * xi._0,
+            xi1_2 = xi._1 * xi._1, xi1_3 = xi1_2 * xi._1;
+        var basisTable = [[1 - 3 * xi._0 + 3 * xi0_2 - xi0_3,
+                           3 * xi._0 - 6 * xi0_2 + 3 * xi0_3,
+                           3 * xi0_2 - 3 * xi0_3, xi0_3],
+                          [1 - 3 * xi._1 + 3 * xi1_2 - xi1_3,
+                           3 * xi._1 - 6 * xi1_2 + 3 * xi1_3,
+                           3 * xi1_2 - 3 * xi1_3, xi1_3],
+                          [1 - xi._2, xi._2]];
+        for (var i = 0; i < 4; i++) {
+            for (var j = 0; j < 4; j++) {
+                for (var k = 0; k < 2; k++) {
+                    result += basisTable[0][i] * basisTable[1][j] * basisTable[2][k] * f({ctor: "BicubicLinearLocalNode", _0: i + j * 4 + k * 16 + 1});
+                }
+            }
+        }
+        return result;
+    }
+
     return elm.Native.FastJSON = { fastJSON: fastJSON,
                                    rawLookup: F2(rawLookup),
                                    send: send,
                                    simpleRemapArray: F2(simpleRemapArray),
-                                   linearRemapArray: F2(linearRemapArray) };
+                                   linearRemapArray: F2(linearRemapArray),
+                                   bicubicLinearInterpolate: F2(bicubicLinearInterpolate),
+                                   trilinearInterpolate: F2(trilinearInterpolate)
+                                 };
 };

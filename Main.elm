@@ -61,6 +61,11 @@ simpleRemapArray = NJSON.simpleRemapArray
 linearRemapArray : JSArray { loc : Int, globs: JSArray { glob: Int, mup: Float }} -> JSArray Float -> JSArray Float
 linearRemapArray = NJSON.linearRemapArray
 
+trilinearInterpolate : (TrilinearLocalNode -> Float) -> Xi -> Float
+trilinearInterpolate = NJSON.trilinearInterpolate
+bicubicLinearInterpolate : (BicubicLinearLocalNode -> Float) -> Xi -> Float
+bicubicLinearInterpolate = NJSON.bicubicLinearInterpolate
+
 -- Some basic matrix maths specific to 4x4 matrices...
 identity4x4 = Matrix4x4 (Vector4 1 0 0 0)
                         (Vector4 0 1 0 0)
@@ -439,6 +444,7 @@ lvJSONToModel showElems resp =
         lookupThetaValue : ElementID -> TrilinearLocalNode -> Float
         lookupThetaValue = trilinearLookupValue localThetas
 
+        {-
         doTrilinearInterpolation : (TrilinearLocalNode -> Float) -> Xi -> Float
         doTrilinearInterpolation f (Xi (xi0, xi1, xi2)) =
           sum <| map (
@@ -474,7 +480,7 @@ lvJSONToModel showElems resp =
                       )
                       (xiFunc xi0)
 
-
+        -}
         
 
         prolateCoords : ElementID -> Surface -> RefinedNodeID -> Prolate
@@ -482,9 +488,9 @@ lvJSONToModel showElems resp =
           let
             xi = refinedNodeToXiCoordinates rnid surf
           in
-            Prolate { lambda = doBicubicLinearInterpolation (lookupLambdaValue elid) xi,
-                      mu = doTrilinearInterpolation (lookupMuValue elid) xi,
-                      theta = doTrilinearInterpolation (lookupThetaValue elid) xi }
+            Prolate { lambda = bicubicLinearInterpolate (lookupLambdaValue elid) xi,
+                      mu = trilinearInterpolate (lookupMuValue elid) xi,
+                      theta = trilinearInterpolate (lookupThetaValue elid) xi }
 
         rcCoords : ElementID -> Surface -> RefinedNodeID -> Coord3D
         rcCoords elID surf rnID = prolateToCartesian (rawLookup rawData.distributions 0).averages.flength
