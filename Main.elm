@@ -3,6 +3,8 @@ import Native.FastJSON as NJSON
 import Dict
 import Mouse
 import Keyboard
+import Touch
+
 import Http (Success, Waiting, Failure)
 import Json
 import JavaScript.Experimental
@@ -248,55 +250,84 @@ data TranslationPlane = TranslateXY | TranslateXZ
 data CameraModifyMode = CameraRotate | CameraTranslate TranslationPlane
 
 type CameraMoveState = { cameraQuaternion: Quaternion, cameraTransformation: Vector3 Float Float Float,
-                         processedPosition: (Int, Int), mouseWasDown: Bool, 
+                         processedPosition: (Int, Int),
+                         mainTouch: Touch, 
+                         wasDragging: Bool, 
                          cameraModifyMode: CameraModifyMode }
+
 initialCameraMoveState : CameraMoveState
 initialCameraMoveState = { cameraQuaternion = Quaternion 1 0 0 0,
                            cameraTransformation = Vector3 0 0 (0-200),
-                           processedPosition = (0,0), mouseWasDown = False, 
-                           cameraModifyMode = CameraRotate }
+                           processedPosition = (0,0), 
+                           mainTouch = { x = 0, y = 0, id = 0, x0 = 0, y0 = 0, t0 = 0 },
+                           wasDragging = False,
+                           cameraModifyMode = CameraRotate
+                           }
 
 keyboardAlt : [KeyCode] -> Bool
 keyboardAlt keysDown = any (\x -> x == 18) keysDown 
 
 cameraMoveState : Signal CameraMoveState
-cameraMoveState = foldp updateCameraMoveState initialCameraMoveState (lift5 (,,,,) Mouse.isDown Keyboard.shift Keyboard.ctrl Keyboard.keysDown Mouse.position)
-updateCameraMoveState : (Bool, Bool, Bool, [KeyCode], (Int, Int)) -> CameraMoveState -> CameraMoveState
-updateCameraMoveState (mouseDown, shift, ctrl, keysDown, (mouseX, mouseY) as mousePos) oldMoveState =
-  if not mouseDown
-    then {oldMoveState | mouseWasDown <- False }
-    else
-      if not oldMoveState.mouseWasDown
-        then { oldMoveState | mouseWasDown <- True, processedPosition <- mousePos,
-                              cameraModifyMode <- if shift then CameraTranslate TranslateXY else
-                                                     if (ctrl || keyboardAlt keysDown) then CameraTranslate TranslateXZ else CameraRotate}
-        else
-          case oldMoveState.cameraModifyMode of
-            CameraRotate ->
+cameraMoveState = Signal.foldp updateCameraMoveState initialCameraMoveState (Signal.lift4 (,,,) Keyboard.shift Keyboard.ctrl Keyboard.keysDown Touch.touches)
+updateCameraMoveState : (Bool, Bool, [KeyCode], [Touch]) -> CameraMoveState -> CameraMoveState
+updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
+  let
+    dragging = (length touches > 0)
+  in
+    if not dragging
+      then {oldMoveState | wasDragging <- False }
+      else
+        let
+          newCameraModifyMode = if (shift || length touches == 2)                       then CameraTranslate TranslateXY else
+                                if (ctrl || keyboardAlt keysDown || length touches > 2) then CameraTranslate TranslateXZ 
+                                else CameraRotate
+        in
+          if not oldMoveState.wasDragging
+            then
+              let pointer = head touches in
+                { oldMoveState | wasDragging <- True, processedPosition <- (pointer.x, pointer.y), mainTouch <- head touches,
+                                cameraModifyMode <- newCameraModifyMode}
+            else
               let
+                previousPointCatcher = filter (\t -> t.id == oldMoveState.mainTouch.id ) touches
+                pointer = if length previousPointCatcher > 0 then head previousPointCatcher else head touches
                 (lastX, lastY) = oldMoveState.processedPosition
-                -- Moving the mouse all the way across rotates 1 radian.
-                phi   = (toFloat (lastX - mouseX)) / (toFloat canvasWidth)
-                theta = (toFloat (lastY - mouseY)) / (toFloat canvasHeight)
-                rotQuaternion = eulerToQuaternion phi 0 theta
               in
-                { oldMoveState | cameraQuaternion <-
-                  normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
-                  processedPosition <- mousePos }
-            CameraTranslate plane ->
-              let
-                (lastX, lastY) = oldMoveState.processedPosition
-                distanceX = (toFloat (mouseX - lastX)) / (toFloat canvasWidth) * 50.0
-                distanceY = (toFloat (mouseY - lastY)) / (toFloat canvasHeight) * 50.0
-                translateBy = case plane of
-                                TranslateXY -> (distanceX, 0-distanceY, 0)
-                                TranslateXZ -> (distanceX, 0, distanceY)
-                Vector3 otx oty otz = oldMoveState.cameraTransformation
-                (tx, ty, tz) =  translateBy
-              in
-                { oldMoveState |
-                    cameraTransformation <- Vector3 (otx + tx) (oty + ty) (otz + tz),
-                    processedPosition <- mousePos }
+                case oldMoveState.cameraModifyMode of
+                  CameraRotate ->
+                    let
+                      x = 2 * ((toFloat pointer.x) / (toFloat canvasWidth))  - 1
+                      y = 2 * ((toFloat pointer.y) / (toFloat canvasHeight)) - 1 
+                      modPositionVector = sqrt( (x * x) + (y * y) )
+
+                      xChange = 2 * (toFloat (lastX - pointer.x)) / (toFloat canvasWidth)
+                      yChange = 2 * (toFloat (lastY - pointer.y)) / (toFloat canvasHeight)
+                      modChangeVector = sqrt( (xChange * xChange) + (yChange * yChange) )
+ 
+                      alpha = if modChangeVector > 0 && modPositionVector > 0 then abs(x * xChange + y * yChange)/modChangeVector/modPositionVector else 1.0
+
+                      phi   = alpha * xChange
+                      theta = alpha * yChange
+                      psi   = ((y * xChange) - (x * yChange))
+
+                      rotQuaternion = eulerToQuaternion phi psi theta
+                    in
+                      { oldMoveState | cameraQuaternion <-
+                        normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
+                        processedPosition <- (pointer.x, pointer.y), cameraModifyMode <- newCameraModifyMode, mainTouch <- pointer }
+                  CameraTranslate plane ->
+                    let
+                      distanceX = (toFloat (pointer.x - lastX)) / (toFloat canvasWidth) * 50
+                      distanceY = (toFloat (pointer.y - lastY)) / (toFloat canvasHeight) * 50
+                      translateBy = case plane of
+                                      TranslateXY -> (distanceX, 0-distanceY, 0)
+                                      TranslateXZ -> (distanceX, 0, distanceY)
+                      Vector3 otx oty otz = oldMoveState.cameraTransformation
+                      (tx, ty, tz) =  translateBy
+                    in
+                      { oldMoveState |
+                          cameraTransformation <- Vector3 (otx + tx) (oty + ty) (otz + tz),
+                          processedPosition <- (pointer.x, pointer.y), cameraModifyMode <- newCameraModifyMode, mainTouch <- pointer }
 
 cameraMatrix : Signal Matrix4x4
 cameraMatrix = lift (\x ->
@@ -358,7 +389,7 @@ canvasWidth = 500
 canvasHeight : Int
 canvasHeight = 500
 
-initialDiffuseDirection = Vector4 0.3 0.8 (0 - 0.5) 1
+initialDiffuseDirection = Vector4 (0-0.3) (0-0.5) (0-0.8) 1
 
 lvJSON = lift responseToLVJSON (sendRaw (constant <| Http.get ("../LV.json")))
 
@@ -532,4 +563,5 @@ pureMain baseModelValue cameraMatrixValue =
                          ambientIntensity = 0.4,
                          diffuseIntensity = 0.3,
                          diffuseDirection = rotatedDiffuseDirection }))
-     -- asText cameraMatrixValue
+     -- `above` asText cameraMatrixValue
+
