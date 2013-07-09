@@ -18,8 +18,10 @@ data Triangle = Triangle Coord3D Coord3D Coord3D
 data Shape = LINE | SQUARE | TRIANGLE | CUBE | TETRAHEDRON | WEDGE12 | WEDGE13 | WEDGE23
 type GLProjection = Matrix4x4
 data GLColour = GLColour Float Float Float
-data Matrix4x4 = Matrix4x4 [Float]
-data Quaternion = Quaternion (Float, Float, Float, Float)
+data Vector4 = Vector4 Float Float Float Float
+data Matrix4x4 = Matrix4x4 Vector4 Vector4 Vector4 Vector4
+data Vector3 = Vector3 Float Float Float
+data Quaternion = Quaternion Float Float Float Float
 
 data GLPrimModel = GLPrimModel {
   -- A list of primitive triangles.
@@ -32,7 +34,7 @@ data GLPrimSceneView = GLPrimSceneView {
   diffuseColour: GLColour,  -- The diffuse light colour.
   ambientIntensity: Float,  -- The intensity in [0,1] of the ambient light.
   diffuseIntensity: Float,  -- The intensity in [0,1] of the diffuse light.
-  diffuseDirection: (Float, Float, Float) -- The diffuse light direction vector.
+  diffuseDirection: Vector3 -- The diffuse light direction vector.
   }
 
 -- Constructs a WebGL element to view a model according to settings.
@@ -60,119 +62,113 @@ linearRemapArray : JSArray { loc : Int, globs: JSArray { glob: Int, mup: Float }
 linearRemapArray = NJSON.linearRemapArray
 
 -- Some basic matrix maths specific to 4x4 matrices...
-identity4x4 = Matrix4x4 [1,0,0,0,
-                         0,1,0,0,
-                         0,0,1,0,
-                         0,0,0,1]
+identity4x4 = Matrix4x4 (Vector4 1 0 0 0)
+                        (Vector4 0 1 0 0)
+                        (Vector4 0 0 1 0)
+                        (Vector4 0 0 0 1)
 
-tuple3FromList : [Float] -> (Float, Float, Float)
-tuple3FromList [x, y, z, w] = (x, y, z)
+vec4ToXYZ : Vector4 -> Vector3
+vec4ToXYZ (Vector4 x y z _) = Vector3 x y z
 
-matrix4x4Row : Int -> Matrix4x4 -> [Float]
-matrix4x4Row row (Matrix4x4 [x11,x12,x13,x14,
-                             x21,x22,x23,x24,
-                             x31,x32,x33,x34,
-                             x41,x42,x43,x44]) =
+matrix4x4Row : Int -> Matrix4x4 -> Vector4
+matrix4x4Row row (Matrix4x4 r1 r2 r3 r4) =
   case row of
-    0 -> [x11, x12, x13, x14]
-    1 -> [x21, x22, x23, x24]
-    2 -> [x31, x32, x33, x34]
-    3 -> [x41, x42, x43, x44]
+    0 -> r1
+    1 -> r2
+    2 -> r3
+    3 -> r4
 
-matrix4x4Column : Int -> Matrix4x4 -> [Float]
-matrix4x4Column row (Matrix4x4 [x11,x12,x13,x14,
-                                x21,x22,x23,x24,
-                                x31,x32,x33,x34,
-                                x41,x42,x43,x44]) =
+matrix4x4Column : Int -> Matrix4x4 -> Vector4
+matrix4x4Column row (Matrix4x4 (Vector4 x11 x12 x13 x14)
+                               (Vector4 x21 x22 x23 x24)
+                               (Vector4 x31 x32 x33 x34)
+                               (Vector4 x41 x42 x43 x44)) =
   case row of
-    0 -> [x11, x21, x31, x41]
-    1 -> [x12, x22, x32, x42]
-    2 -> [x13, x23, x33, x43]
-    3 -> [x14, x24, x34, x44]
+    0 -> Vector4 x11 x21 x31 x41
+    1 -> Vector4 x12 x22 x32 x42
+    2 -> Vector4 x13 x23 x33 x43
+    3 -> Vector4 x14 x24 x34 x44
 
-dotProduct : [Float] -> [Float] -> Float
-dotProduct a b = sum (zipWith (*) a b)
+dotProduct : Vector4 -> Vector4 -> Float
+dotProduct (Vector4 x1 x2 x3 x4) (Vector4 y1 y2 y3 y4) =
+  (x1*y1) + (x2*y2) + (x3*y3) + (x4*y4)
 
 multiply4x4 : Matrix4x4 -> Matrix4x4 -> Matrix4x4
 multiply4x4 m1 m2 =
   let
     p r c = dotProduct (matrix4x4Row r m1) (matrix4x4Column c m2)
   in
-   Matrix4x4 [p 0 0, p 0 1, p 0 2, p 0 3,
-              p 1 0, p 1 1, p 1 2, p 1 3,
-              p 2 0, p 2 1, p 2 2, p 2 3,
-              p 3 0, p 3 1, p 3 2, p 3 3
-             ]
-mat4x4xv : Matrix4x4 -> [Float] -> [Float]
+   Matrix4x4 (Vector4 (p 0 0) (p 0 1) (p 0 2) (p 0 3))
+             (Vector4 (p 1 0) (p 1 1) (p 1 2) (p 1 3))
+             (Vector4 (p 2 0) (p 2 1) (p 2 2) (p 2 3))
+             (Vector4 (p 3 0) (p 3 1) (p 3 2) (p 3 3))
+
+mat4x4xv : Matrix4x4 -> Vector4 -> Vector4
 mat4x4xv m v =
-  [dotProduct (matrix4x4Row 0 m) v,
-   dotProduct (matrix4x4Row 1 m) v,
-   dotProduct (matrix4x4Row 2 m) v,
-   dotProduct (matrix4x4Row 3 m) v]
+  Vector4 (dotProduct (matrix4x4Row 0 m) v)
+          (dotProduct (matrix4x4Row 1 m) v)
+          (dotProduct (matrix4x4Row 2 m) v)
+          (dotProduct (matrix4x4Row 3 m) v)
 
 transpose4x4 : Matrix4x4 -> Matrix4x4
-transpose4x4 (Matrix4x4 [x11,x12,x13,x14,
-                         x21,x22,x23,x24,
-                         x31,x32,x33,x34,
-                         x41,x42,x43,x44]) =
-  Matrix4x4 [x11, x21, x31, x41,
-             x12, x22, x32, x42,
-             x13, x23, x33, x43,
-             x14, x24, x34, x44]
+transpose4x4 (Matrix4x4 (Vector4 x11 x12 x13 x14)
+                        (Vector4 x21 x22 x23 x24)
+                        (Vector4 x31 x32 x33 x34)
+                        (Vector4 x41 x42 x43 x44)) =
+  Matrix4x4 (Vector4 x11 x21 x31 x41)
+            (Vector4 x12 x22 x32 x42)
+            (Vector4 x13 x23 x33 x43)
+            (Vector4 x14 x24 x34 x44)
 
-norm4 : [Float] -> [Float]
-norm4 [x1, x2, x3, x4] = [x1/x4, x2/x4, x3/x4]
-
+norm4 : Vector4 -> Vector3
+norm4 (Vector4 x1 x2 x3 x4) = Vector3 (x1/x4) (x2/x4) (x3/x4)
 
 -- | mat4ToInverseMat3 calculates the inverse of the upper 3x3 elements of a 4x4 matrix, returning a 4x4 matrix containing the result in its upper 3x3, and the identiy in the lower right.
 --   Based on code from glMatrix.
 mat4ToInverseMat3 : Matrix4x4 -> Matrix4x4
-mat4ToInverseMat3 (Matrix4x4 
-  [x11,x12,x13,x14,
-   x21,x22,x23,x24,
-   x31,x32,x33,x34,
-   x41,x42,x43,x44]) =
+mat4ToInverseMat3 (Matrix4x4 (Vector4 x11 x12 x13 x14)
+                             (Vector4 x21 x22 x23 x24)
+                             (Vector4 x31 x32 x33 x34)
+                             (Vector4 x41 x42 x43 x44)) =
   let
     b12 = x33*x22-x23*x32
     b22 = x23*x31-x33*x21
     b32 = x32*x21-x22*x31
-         
     det = x11*b12 + x12*b22 + x13*b32
     invDet = if det == 0 then 0 else 1/det
   in
-    Matrix4x4 [
-      b12*invDet,  (x13*x32 - x33*x12)*invDet,  (x23*x12 - x13*x22)*invDet, 0,
-      b22*invDet,  (x33*x11 - x13*x31)*invDet,  (x13*x21 - x23*x11)*invDet, 0,
-      b32*invDet,  (x12*x31 - x32*x11)*invDet,  (x22*x11 - x12*x21)*invDet, 0,
-      0,           0,                           0,                          1
-      ]
+    Matrix4x4
+      (Vector4 (b12*invDet) ((x13*x32 - x33*x12)*invDet) ((x23*x12 - x13*x22)*invDet) 0)
+      (Vector4 (b22*invDet) ((x33*x11 - x13*x31)*invDet) ((x13*x21 - x23*x11)*invDet) 0)
+      (Vector4 (b32*invDet) ((x12*x31 - x32*x11)*invDet) ((x22*x11 - x12*x21)*invDet) 0)
+      (Vector4 0            0                            0                            1)
 
-quaternionToRotationMatrix (Quaternion (a, b, c, d)) =
-  Matrix4x4 [1 - 2 * (c * c + d * d), 2 * (b * c + a * d),     2 * (b * d - a * c),     0,
-             2 * (b * c - a * d),     1 - 2 * (b * b + d * d), 2 * (c * d + a * b),     0,
-             2 * (b * d + a * c),     2 * (c * d - a * b),     1 - 2 * (b * b + c * c), 0,
-             0,                       0,                       0,                       1]
+quaternionToRotationMatrix (Quaternion a b c d) =
+  Matrix4x4 (Vector4 (1 - 2 * (c * c + d * d)) (2 * (b * c + a * d))     (2 * (b * d - a * c))     0)
+            (Vector4 (2 * (b * c - a * d))     (1 - 2 * (b * b + d * d)) (2 * (c * d + a * b))     0)
+            (Vector4 (2 * (b * d + a * c))     (2 * (c * d - a * b))     (1 - 2 * (b * b + c * c)) 0)
+            (Vector4 0                         0                         0                         1)
 
-normaliseQuaternion (Quaternion (a, b, c, d)) =
+normaliseQuaternion (Quaternion a b c d) =
   let
     norm = sqrt (a * a + b * b + c * c + d * d)
   in
-   Quaternion (a/norm, b/norm, c/norm, d/norm)
+   Quaternion (a/norm) (b/norm) (c/norm) (d/norm)
   
-multiplyQuaternion (Quaternion (a1, b1, c1, d1)) (Quaternion (a2, b2, c2, d2)) =
-  Quaternion (a1 * a2 - b1 * b2 - c1 * c2 - d1 * d2,
-              c1 * d2 - d1 * c2 + a1 * b2 + a2 * b1,
-              d1 * b2 - b1 * d2 + a1 * c2 + a2 * c1,
-              b1 * c2 - c1 * b2 + a1 * d2 + d1 * a2)
-conjugateQuaternion (Quaternion (a, b, c, d)) = Quaternion (a, 0-b, 0-c, 0-d)
+multiplyQuaternion (Quaternion a1 b1 c1 d1) (Quaternion a2 b2 c2 d2) =
+  Quaternion (a1 * a2 - b1 * b2 - c1 * c2 - d1 * d2)
+             (c1 * d2 - d1 * c2 + a1 * b2 + a2 * b1)
+             (d1 * b2 - b1 * d2 + a1 * c2 + a2 * c1)
+             (b1 * c2 - c1 * b2 + a1 * d2 + d1 * a2)
+conjugateQuaternion (Quaternion a b c d) = Quaternion a (0-b) (0-c) (0-d)
 
-rotateVectorByQuaternion : Quaternion -> (Float, Float, Float) -> (Float, Float, Float)
-rotateVectorByQuaternion q (x,y,z) =
+rotateVectorByQuaternion : Quaternion -> Vector3 -> Vector3
+rotateVectorByQuaternion q (Vector3 x y z) =
   let
-    Quaternion (_, x', y', z') =
-      q `multiplyQuaternion` (Quaternion (0, x, y, z)) `multiplyQuaternion` (conjugateQuaternion q)
+    Quaternion _ x' y' z' =
+      q `multiplyQuaternion` (Quaternion 0 x y z) `multiplyQuaternion` (conjugateQuaternion q)
   in
-   (x', y', z')
+   Vector3 x' y' z'
 
 eulerToQuaternion theta phi psi =
   let
@@ -186,16 +182,16 @@ eulerToQuaternion theta phi psi =
     cospsi2 = cos psi2
     sinpsi2 = sin psi2
   in
-   Quaternion (cospsi2 * costheta2 * cosphi2 + sinpsi2 * costheta2 * cosphi2,
-               sinpsi2 * costheta2 * cosphi2 - cospsi2 * sintheta2 * sinphi2,
-               cospsi2 * sintheta2 * cosphi2 + sinpsi2 * costheta2 * sinphi2,
-               cospsi2 * costheta2 * sinphi2 - sinpsi2 * sintheta2 * cosphi2)
+   Quaternion (cospsi2 * costheta2 * cosphi2 + sinpsi2 * costheta2 * cosphi2)
+              (sinpsi2 * costheta2 * cosphi2 - cospsi2 * sintheta2 * sinphi2)
+              (cospsi2 * sintheta2 * cosphi2 + sinpsi2 * costheta2 * sinphi2)
+              (cospsi2 * costheta2 * sinphi2 - sinpsi2 * sintheta2 * cosphi2)
 
-vectorToTransformMatrix (x, y, z) =
-  Matrix4x4 [1, 0, 0, x,
-             0, 1, 0, y,
-             0, 0, 1, z,
-             0, 0, 0, 1]
+vectorToTranslationMatrix (Vector3 x y z) =
+  Matrix4x4 (Vector4 1 0 0 x)
+            (Vector4 0 1 0 y)
+            (Vector4 0 0 1 z)
+            (Vector4 0 0 0 1)
 
 lowVal = 0-0.8
 highVal = 0.8
@@ -234,12 +230,11 @@ perspectiveMatrix near far aspectRatio fovRadians =
     f = 1.0 / (tan(fovRadians / 2))
     nf = 1 / (near - far)
   in
-    transpose4x4 <| Matrix4x4 [
-      f / aspectRatio,    0,     0,                      0,
-      0,                  f,     0,                      0,
-      0,                  0,     (far + near) * nf,      0 - 1,
-      0,                  0,     (2 * far * near) * nf,  0
-      ]
+   Matrix4x4
+     (Vector4 (f / aspectRatio) 0 0                   0)
+     (Vector4 0                 f 0                   0)
+     (Vector4 0                 0 ((far + near) * nf) ((2 * far * near) * nf))
+     (Vector4 0                 0 (0-1)               0)
 
 myPerspectiveMatrix : Matrix4x4
 myPerspectiveMatrix = perspectiveMatrix 0.01 1000 1 myFovRadians
@@ -247,12 +242,12 @@ myPerspectiveMatrix = perspectiveMatrix 0.01 1000 1 myFovRadians
 data TranslationPlane = TranslateXY | TranslateXZ
 data CameraModifyMode = CameraRotate | CameraTranslate TranslationPlane
 
-type CameraMoveState = { cameraQuaternion: Quaternion, cameraTransformation: (Float, Float, Float),
+type CameraMoveState = { cameraQuaternion: Quaternion, cameraTransformation: Vector3 Float Float Float,
                          processedPosition: (Int, Int), mouseWasDown: Bool, 
                          cameraModifyMode: CameraModifyMode }
 initialCameraMoveState : CameraMoveState
-initialCameraMoveState = { cameraQuaternion = Quaternion (1,0,0,0),
-                           cameraTransformation = (0, 0, 0-200),
+initialCameraMoveState = { cameraQuaternion = Quaternion 1 0 0 0,
+                           cameraTransformation = Vector3 0 0 (0-200),
                            processedPosition = (0,0), mouseWasDown = False, 
                            cameraModifyMode = CameraRotate }
 
@@ -291,16 +286,16 @@ updateCameraMoveState (mouseDown, shift, ctrl, keysDown, (mouseX, mouseY) as mou
                 translateBy = case plane of
                                 TranslateXY -> (distanceX, 0-distanceY, 0)
                                 TranslateXZ -> (distanceX, 0, distanceY)
-                (otx, oty, otz) = oldMoveState.cameraTransformation
+                Vector3 otx oty otz = oldMoveState.cameraTransformation
                 (tx, ty, tz) =  translateBy
               in
                 { oldMoveState |
-                    cameraTransformation <- (otx + tx, oty + ty, otz + tz),
+                    cameraTransformation <- Vector3 (otx + tx) (oty + ty) (otz + tz),
                     processedPosition <- mousePos }
 
 cameraMatrix : Signal Matrix4x4
 cameraMatrix = lift (\x ->
-  vectorToTransformMatrix x.cameraTransformation
+  vectorToTranslationMatrix x.cameraTransformation
      `multiply4x4`
   quaternionToRotationMatrix x.cameraQuaternion
   ) cameraMoveState
@@ -341,21 +336,24 @@ data TrilinearLocalNode = TrilinearLocalNode Int
 -- There are two surfaces - endo and epicardial.
 data Surface = Endocardial | Epicardial
 
--- For graphical purposes, we refine each element into 3*3 quads, each containing
--- 4x4 nodes. This identifies one of those nodes within an element (as a number in
--- [1,16]).
+-- For graphical purposes, we refine each element into (refineX-1)*(refineY-1) quads, each containing
+-- refineX*refineY nodes. This identifies one of those nodes within an element (as a number in
+-- [1,refineX*refineY]).
 data RefinedNodeID = RefinedNodeID Int
 
 -- A prolate spheriodal coordinate, given a fixed focal length.
 data Prolate = Prolate { lambda: Float, mu: Float, theta: Float }
 data Xi = Xi (Float, Float, Float)
 
+refineX = 4
+refineY = 4
+
 canvasWidth : Int
 canvasWidth = 500
 canvasHeight : Int
 canvasHeight = 500
 
-initialDiffuseDirection = [0.3, 0.8, 0 - 0.5, 1]
+initialDiffuseDirection = Vector4 0.3 0.8 (0 - 0.5) 1
 
 lvJSON = lift responseToLVJSON (sendRaw (constant <| Http.get ("../LV.json")))
 
@@ -376,23 +374,23 @@ localNodeIndexTrilinear (TrilinearLocalNode lnID) (ElementID elID) =
   (elID - 1) * nTrilinearLocalNodes + (lnID - 1) + 1
 
 allRefinedNodes : [RefinedNodeID]
-allRefinedNodes = map RefinedNodeID [1..16]
+allRefinedNodes = map RefinedNodeID [1..(refineX*refineY)]
 
 allElements : [ElementID]
 allElements = map ElementID [1..nElements]
 
 allSurfaces : [Surface]
-allSurfaces = [Endocardial] -- [Endocardial, Epicardial]
+allSurfaces = [Endocardial, Epicardial]
 
 refinedNodeToXiCoordinates : RefinedNodeID -> Surface -> Xi
 refinedNodeToXiCoordinates (RefinedNodeID rnid) surf =
   let
     rnid0 = rnid - 1
-    col = rnid0 `mod` 4
-    row = rnid `div` 4
+    col = rnid0 `mod` refineX
+    row = rnid `div` refineX
   in
-   Xi ((toFloat col) * 0.333333333333333333333,
-       (toFloat row) * 0.333333333333333333333,
+   Xi ((toFloat col) * (1 / toFloat (refineX - 1)),
+       (toFloat row) * (1 / toFloat (refineY - 1)),
        surfaceToFloat surf)
 
 cosh : Float -> Float
@@ -493,62 +491,39 @@ lvJSONToModel showElems resp =
                                                          (prolateCoords elID surf rnID)
         elementPrims elID surf =
           let
-            [n11,n12,n13,n14,
-             n21,n22,n23,n24,
-             n31,n32,n33,n34,
-             n41,n42,n43,n44] = map (rcCoords elID surf) allRefinedNodes
+             narray = fromList (map (rcCoords elID surf) allRefinedNodes)
+             nodeAt x y = rawLookup narray (y * refineX + x)
           in
-            [Triangle n11 n21 n12, Triangle n12 n21 n22, Triangle n12 n22 n13, Triangle n13 n22 n23,
-             Triangle n13 n23 n14, Triangle n14 n23 n24,
-             Triangle n21 n31 n22, Triangle n22 n31 n32, Triangle n22 n32 n23, Triangle n23 n32 n33,
-             Triangle n23 n33 n24, Triangle n24 n33 n34,
-             Triangle n31 n41 n32, Triangle n32 n41 n42, Triangle n32 n42 n33, Triangle n33 n42 n43,
-             Triangle n33 n43 n34, Triangle n34 n43 n44]
+            concatMap (\xlow ->
+              concatMap (\ylow ->
+                [Triangle (nodeAt xlow ylow) (nodeAt xlow (ylow + 1))
+                          (nodeAt (xlow + 1) ylow),
+                 Triangle (nodeAt (xlow + 1) ylow) (nodeAt xlow (ylow + 1))
+                          (nodeAt (xlow + 1) (ylow + 1))]
+              ) [0..(refineY - 2)]
+            ) [0..(refineX - 2)]
       in
        GLPrimModel { primitives =
                        concatMap (\surf -> concatMap (\elID -> elementPrims elID surf) showElems)
                                  allSurfaces }
 
-elDropDown : (Signal Element, Signal [ElementID])
-elDropDown =
-  dropDown [("Element 1", [ElementID 1]),
-            ("Element 2", [ElementID 2]),
-            ("Element 3", [ElementID 3]),
-            ("Element 4", [ElementID 4]),
-            ("Element 5", [ElementID 5]),
-            ("Element 6", [ElementID 6]),
-            ("Element 7", [ElementID 7]),
-            ("Element 8", [ElementID 8]),
-            ("Element 9", [ElementID 9]),
-            ("Element 10", [ElementID 10]),
-            ("Element 11", [ElementID 11]),
-            ("Element 12", [ElementID 12]),
-            ("Element 13", [ElementID 13]),
-            ("Element 14", [ElementID 14]),
-            ("Element 15", [ElementID 15]),
-            ("Element 16", [ElementID 16]),
-            ("All", allElements)
-           ]
-
 baseModel : Signal GLPrimModel
-baseModel = lvJSONToModel <~ snd elDropDown ~ lvJSON
+baseModel = lvJSONToModel allElements <~ lvJSON
 
 main : Signal Element
 main =
-  pureMain <~ fst elDropDown ~ snd elDropDown ~ baseModel ~ cameraMatrix
+  pureMain <~ baseModel ~ cameraMatrix
 
-pureMain elSelector elValue baseModelValue cameraMatrixValue =
+pureMain baseModelValue cameraMatrixValue =
     let
       camPerspect = myPerspectiveMatrix `multiply4x4` cameraMatrixValue
-      rotatedDiffuseDirection = tuple3FromList <| (mat4ToInverseMat3 cameraMatrixValue) `mat4x4xv` initialDiffuseDirection
+      rotatedDiffuseDirection = vec4ToXYZ <| (mat4ToInverseMat3 cameraMatrixValue) `mat4x4xv` initialDiffuseDirection
     in
      (glSceneObject canvasWidth canvasHeight baseModelValue
-      (GLPrimSceneView { projection = transpose4x4 camPerspect,
+      (GLPrimSceneView { projection = camPerspect,
                          ambientColour = GLColour 1 1 1,
                          diffuseColour = GLColour 1 1 1,
                          ambientIntensity = 0.4,
                          diffuseIntensity = 0.3,
-                         diffuseDirection = rotatedDiffuseDirection })) `above`
-     -- (asText baseModelValue) `above`
-     elSelector -- `above`
-     -- asText elValue
+                         diffuseDirection = rotatedDiffuseDirection }))
+     -- asText cameraMatrixValue
