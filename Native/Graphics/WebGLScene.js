@@ -27,7 +27,7 @@ Elm.Native.Graphics.WebGLScene = function(elm) {
          void main(void) {\
            mediump vec3 rgb = aAmbientColour * aAmbientIntensity +\
                       aDiffuse1Colour * aDiffuse1Intensity * \
-                      clamp(dot(normalize(normal), normalize(aDiffuse1Direction)), 0.0, 1.0);\
+                      clamp(dot(normal, normalize(aDiffuse1Direction)), 0.0, 1.0);\
            gl_FragColor = vec4(rgb, 1.0);\
                          }"
 
