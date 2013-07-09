@@ -141,7 +141,11 @@ Elm.Native.Graphics.WebGLScene = function(elm) {
         if (sceneChanged) {
             var sv = next.sceneview._0;
             jscanvas.ctx.uniformMatrix4fv(jscanvas.shadeData.aProjection, false,
-                                          JS.fromList(sv.projection._0));
+                                          [sv.projection._0._0, sv.projection._1._0, sv.projection._2._0, sv.projection._3._0,
+                                           sv.projection._0._1, sv.projection._1._1, sv.projection._2._1, sv.projection._3._1,
+                                           sv.projection._0._2, sv.projection._1._2, sv.projection._2._2, sv.projection._3._2,
+                                           sv.projection._0._3, sv.projection._1._3, sv.projection._2._3, sv.projection._3._3
+                                          ]);
             jscanvas.ctx.uniform1f(jscanvas.shadeData.aAmbientIntensity, sv.ambientIntensity);
             jscanvas.ctx.uniform1f(jscanvas.shadeData.aDiffuse1Intensity, sv.diffuseIntensity);
             jscanvas.ctx.uniform3f(jscanvas.shadeData.aAmbientColour, sv.ambientColour._0,
