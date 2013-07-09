@@ -165,6 +165,19 @@ eulerToQuaternion theta phi psi =
                cospsi2 * sintheta2 * cosphi2 + sinpsi2 * costheta2 * sinphi2,
                cospsi2 * costheta2 * sinphi2 - sinpsi2 * sintheta2 * cosphi2)
 
+eulerSmallToQuaternion theta phi psi =
+  let
+    theta2 = theta / 2
+    phi2 = phi / 2
+    psi2 = psi / 2
+  in
+   Quaternion (1 + psi2,
+               psi2 - theta2 * phi2,
+               theta2 + psi2 * phi2,
+               phi2 - psi2 * theta2 )
+
+
+
 vectorToTransformMatrix (x, y, z) =
   Matrix4x4 [1, 0, 0, x,
              0, 1, 0, y,
@@ -278,13 +291,13 @@ updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
                       yChange = 2 * (toFloat (lastY - pointer.y)) / (toFloat canvasHeight)
                       modChangeVector = sqrt( (xChange * xChange) + (yChange * yChange) )
  
-                      alpha = if modChangeVector > 0.0 && modPositionVector > 0 then abs(x * xChange + y * yChange)/modChangeVector/modPositionVector else 1.0
+                      alpha = if modChangeVector > 0 && modPositionVector > 0 then abs(x * xChange + y * yChange)/modChangeVector/modPositionVector else 1.0
 
                       phi   = alpha * xChange
                       theta = alpha * yChange
                       psi   = ((y * xChange) - (x * yChange))
 
-                      rotQuaternion = eulerToQuaternion phi psi theta
+                      rotQuaternion = eulerSmallToQuaternion phi psi theta
                     in
                       { oldMoveState | cameraQuaternion <-
                         normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
