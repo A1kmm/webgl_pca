@@ -350,8 +350,8 @@ data RefinedNodeID = RefinedNodeID Int
 data Prolate = Prolate { lambda: Float, mu: Float, theta: Float }
 data Xi = Xi (Float, Float, Float)
 
-refineX = 4
-refineY = 4
+refineX = 6
+refineY = 6
 
 canvasWidth : Int
 canvasWidth = 500
