@@ -37,10 +37,8 @@ Elm.Native.Graphics.WebGLScene = function(elm) {
         jscanvas.width = model.w;
         jscanvas.height = model.h;
 
-        setTimeout(function() {
-            newContext(jscanvas);
-            updateGLScene(jscanvas, {w:0,h:0, model: null, projection: null }, model);
-        }, 100);
+        newContext(jscanvas);
+        updateGLScene(jscanvas, {w:0,h:0, model: null, projection: null }, model);
         return jscanvas;
     }
 
