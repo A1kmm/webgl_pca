@@ -9,17 +9,13 @@ import Http (Success, Waiting, Failure)
 import Json
 import JavaScript.Experimental
 import Graphics.Input (dropDown)
-import JavaScript (fromList, toList)
+import JavaScript (fromList, toList, fromString)
 import Native.JQuery
 import Native.Graphics.Slider as NSLIDE
 
-data BasisFunction = CONSTANT | LINEAR_LAGRANGE | QUADRATIC_LAGRANGE |
-                     CUBIC_LAGRANGE | LINEAR_SIMPLEX | QUADRATIC_SIMPLEX
-type Element = Int
 -- 3D cartesian coordinates.
 data Coord3D = Coord3D Float Float Float
 data Triangle = Triangle Coord3D Coord3D Coord3D
-data Shape = LINE | SQUARE | TRIANGLE | CUBE | TETRAHEDRON | WEDGE12 | WEDGE13 | WEDGE23
 type GLProjection = Matrix4x4
 data GLColour = GLColour Float Float Float
 data Vector4 = Vector4 Float Float Float Float
@@ -349,16 +345,21 @@ cameraMatrix = lift (\x ->
   quaternionToRotationMatrix x.cameraQuaternion
   ) cameraMoveState
 
+data Dataset = DETERMINE | MESA
+data BiologicalState = EndDiastole | EndSystole | AverageState
+
+type LVDistrib = {dataset: JSString, coordScheme: JSString,
+                  analysis: JSString,
+                  biologicalState: JSString, components: Int,
+                  averages: { flength: Float, lambdas: JSArray Float, mus: JSArray Float,
+                              thetas: JSArray Float},
+                  modes: JSArray { lambdas: JSArray Float, mus: JSArray Float,
+                                   thetas: JSArray Float }
+                 }
 type LVJSON =
   { localToGlobalMuTheta: JSArray {loc: Int, glob: Int},
     localToGlobalLambda: JSArray {loc: Int, globs: JSArray {glob: Int, mup: Float}},
-    distributions: JSArray {dataset: JSString, coordScheme: JSString,
-                            analysis: JSString,
-                            biologicalState: JSString, components: Int,
-                            averages: { flength: Float, lambdas: JSArray Float, mus: JSArray Float,
-                                 thetas: JSArray Float},
-                            modes: JSArray { lambdas: JSArray Float, mus: JSArray Float,
-                                             thetas: JSArray Float }} }
+    distributions: JSArray LVDistrib }
 
 responseToLVJSON : Response JSString -> Maybe LVJSON
 responseToLVJSON resp = 
@@ -460,13 +461,32 @@ phaseCorrect x = case x of
   (a::((b::_) as r)) -> if b - a > pi then (a + 2*pi)::(phaseCorrect r) else a::(phaseCorrect r)
   l -> l
 
-lvJSONToModel : Maybe LVJSON -> [Float] -> Int -> GLPrimModel
-lvJSONToModel resp modeWeights distNo =
+unsafeFind : (a -> Bool) -> [a] -> a
+unsafeFind f x =
+  case x of
+    (h::t) -> if f h then h else unsafeFind f t
+    -- [] fails.
+
+findMatchingDistribution : Dataset -> BiologicalState -> LVJSON -> LVDistrib
+findMatchingDistribution ds bs lvData =
+  let
+    dsName = fromString <| case ds of
+      DETERMINE -> "DETERMINE"
+      MESA -> "MESA"
+    bsName = fromString <| case bs of
+      EndDiastole -> "ED"
+      EndSystole -> "ES"
+      AverageState -> "ED-ES"
+  in
+   unsafeFind (\d -> d.dataset == dsName && d.biologicalState == bsName) (toList lvData.distributions)
+
+lvJSONToModel : Maybe LVJSON -> [Float] -> Dataset -> BiologicalState -> GLPrimModel
+lvJSONToModel resp modeWeights dataSet biologicalState =
   case resp of
     Nothing -> placeholderModel
     Just rawData ->
       let
-        distrib = rawLookup rawData.distributions distNo
+        distrib = findMatchingDistribution dataSet biologicalState rawData
         modes = toList distrib.modes
         globalLambdas = linearCombine ({ mup = 1.0, values = distrib.averages.lambdas }::
                                           zipWith (\w m -> { mup = w, values = m.lambdas }) modeWeights modes
@@ -532,13 +552,25 @@ modeWeights : [(Signal Element, Signal Float)]
 modeWeights =
   map (\_ -> slider canvasWidth 8 (0-2.0) 2.0 0.01 0.0) [1..6]
 
+selectDataset : (Signal Element, Signal Dataset)
+selectDataset = dropDown [("DETERMINE (diseased hearts)", DETERMINE),
+                          ("MESA (healthy hearts)", MESA)]
+
+selectBiologicalState : (Signal Element, Signal BiologicalState)
+selectBiologicalState = dropDown [("End systole", EndSystole),
+                                  ("End diastole", EndDiastole),
+                                  ("Average", AverageState)]
+
 primModel : Signal GLPrimModel
-primModel = lvJSONToModel <~ lvJSON ~ combine (map snd modeWeights) ~ constant 0
+primModel = lvJSONToModel <~ lvJSON ~ combine (map snd modeWeights) ~ snd selectDataset ~ snd selectBiologicalState
 
 main : Signal Element
 main =
-  flow down <~ combine ((makeSceneView <~ primModel ~ cameraMatrix)::
-                        (map (\(idx, (modeElem, _)) -> labelSlider idx <~ modeElem) (zip [1..6] modeWeights)))
+  flow down <~ combine (((makeSceneView <~ primModel ~ cameraMatrix)::
+                            (map (\(idx, (modeElem, _)) -> labelSlider idx <~ modeElem) (zip [1..6] modeWeights)))
+                         ++ [constant (spacer 1 80),
+                             flow right <~ combine [constant (spacer 50 1), fst selectDataset,
+                                                    constant (spacer 10 1), fst selectBiologicalState]])
 
 labelSlider : Int -> Element -> Element
 labelSlider idx sliderElem = (plainText <| "Mode " ++ (show idx) ++ ": ") `beside` sliderElem
