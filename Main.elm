@@ -206,10 +206,10 @@ vectorToTranslationMatrix (Vector3 x y z) =
             (Vector4 0 0 1 z)
             (Vector4 0 0 0 1)
 
-lowVal = 0-0.8
-highVal = 0.8
-lowZ = 0-0.8
-highZ = 0.8
+lowVal = 0-50
+highVal = 50
+lowZ = 0-50
+highZ = 50
 
 placeholderModel =
   let
