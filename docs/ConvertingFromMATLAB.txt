@@ -1,6 +1,5 @@
 To convert a model from Pau's MATLAB model into an entry to go in the JSON:
 
-
 load('DETERMINE_PS_PCA_ED-ES_k=6.mat')
 modeWeight = zeros(215, 6);
 modeWeight(varidx,:) = (diag(stdevs) * Q')';

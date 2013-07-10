@@ -498,45 +498,6 @@ lvJSONToModel resp modeWeights distNo =
         lookupThetaValue : ElementID -> TrilinearLocalNode -> Float
         lookupThetaValue = trilinearLookupValue localThetas
 
-        {-
-        doTrilinearInterpolation : (TrilinearLocalNode -> Float) -> Xi -> Float
-        doTrilinearInterpolation f (Xi (xi0, xi1, xi2)) =
-          sum <| map (
-            \(sxi0, termxi0) -> sum <|
-              map (
-            \(sxi1, termxi1) -> sum <|
-              map (\(sxi2, termxi2) ->
-                (f (TrilinearLocalNode (sxi0 + sxi1 * 2 + sxi2 * 4 + 1))) * termxi0 * termxi1 * termxi2
-                  )
-                  [(0, 1 - xi2), (1, xi2)]
-                  )
-                  [(0, 1 - xi1), (1, xi1)]
-                    )
-                [(0, 1 - xi0), (1, xi0)]
-        doBicubicLinearInterpolation : (BicubicLinearLocalNode -> Float) -> Xi -> Float
-        doBicubicLinearInterpolation f (Xi (xi0, xi1, xi2)) =
-          let xiFunc xi =
-             let xi2 = xi * xi
-                 xi3 = xi2 * xi
-             in [(0, 1-3*xi+3*xi2-xi3), (1, 3*xi-6*xi2 +3*xi3),
-                 (2, 3 * xi2 - 3 * xi3), (3, xi3)]
-          in
-            sum <| map (
-              \(sxi0, termxi0) -> sum <|
-                map (
-              \(sxi1, termxi1) -> sum <|
-                map (\(sxi2, termxi2) ->
-                  (f (BicubicLinearLocalNode (sxi0 + sxi1 * 4 + sxi2 * 16 + 1))) * termxi0 * termxi1 * termxi2
-                    )
-                    [(0, 1 - xi2), (1, xi2)]
-                    )
-                    (xiFunc xi1)
-                      )
-                      (xiFunc xi0)
-
-        -}
-        
-
         prolateCoords : ElementID -> Surface -> RefinedNodeID -> Prolate
         prolateCoords elid surf rnid =
           let
