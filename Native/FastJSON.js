@@ -85,6 +85,17 @@ Elm.Native.FastJSON = function(elm) {
         return loc;
     }
 
+    function linearCombine(parts) {
+        parts = NJS.fromList(parts);
+        var accum = parts[0].values.map(function(x) { return x * parts[0].mup; });
+        for (var i in parts) {
+            if (i == 0) continue;
+            for (var j in parts[i].values)
+                accum[j] += parts[i].mup * parts[i].values[j];
+        }
+        return accum;
+    }
+
     function trilinearInterpolate(f, xi) {
         var result = 0.0;
         xi = xi._0;
@@ -128,6 +139,7 @@ Elm.Native.FastJSON = function(elm) {
                                    simpleRemapArray: F2(simpleRemapArray),
                                    linearRemapArray: F2(linearRemapArray),
                                    bicubicLinearInterpolate: F2(bicubicLinearInterpolate),
-                                   trilinearInterpolate: F2(trilinearInterpolate)
+                                   trilinearInterpolate: F2(trilinearInterpolate),
+                                   linearCombine: linearCombine
                                  };
 };

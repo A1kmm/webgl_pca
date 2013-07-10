@@ -10,6 +10,8 @@ import Json
 import JavaScript.Experimental
 import Graphics.Input (dropDown)
 import JavaScript (fromList, toList)
+import Native.JQuery
+import Native.Graphics.Slider as NSLIDE
 
 data BasisFunction = CONSTANT | LINEAR_LAGRANGE | QUADRATIC_LAGRANGE |
                      CUBIC_LAGRANGE | LINEAR_SIMPLEX | QUADRATIC_SIMPLEX
@@ -67,6 +69,14 @@ trilinearInterpolate : (TrilinearLocalNode -> Float) -> Xi -> Float
 trilinearInterpolate = NJSON.trilinearInterpolate
 bicubicLinearInterpolate : (BicubicLinearLocalNode -> Float) -> Xi -> Float
 bicubicLinearInterpolate = NJSON.bicubicLinearInterpolate
+
+-- Combines multiple JSArrays into one using a weight multiplier.
+linearCombine : [{ mup : Float, values : JSArray Float }] -> JSArray Float
+linearCombine = NJSON.linearCombine
+
+-- Creates a slider widget.
+slider : Int -> Int -> Float -> Float -> Float -> Float -> (Signal Element, Signal Float)
+slider = NSLIDE.slider
 
 -- Some basic matrix maths specific to 4x4 matrices...
 identity4x4 = Matrix4x4 (Vector4 1 0 0 0)
@@ -267,8 +277,11 @@ initialCameraMoveState = { cameraQuaternion = Quaternion 1 0 0 0,
 keyboardAlt : [KeyCode] -> Bool
 keyboardAlt keysDown = any (\x -> x == 18) keysDown 
 
+canvasTouches : Signal [Touch]
+canvasTouches = filter (\t -> t.x < canvasWidth && t.y < canvasHeight) <~ Touch.touches
+
 cameraMoveState : Signal CameraMoveState
-cameraMoveState = Signal.foldp updateCameraMoveState initialCameraMoveState (Signal.lift4 (,,,) Keyboard.shift Keyboard.ctrl Keyboard.keysDown Touch.touches)
+cameraMoveState = Signal.foldp updateCameraMoveState initialCameraMoveState (Signal.lift4 (,,,) Keyboard.shift Keyboard.ctrl Keyboard.keysDown canvasTouches)
 updateCameraMoveState : (Bool, Bool, [KeyCode], [Touch]) -> CameraMoveState -> CameraMoveState
 updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
   let
@@ -343,7 +356,9 @@ type LVJSON =
                             analysis: JSString,
                             biologicalState: JSString, components: Int,
                             averages: { flength: Float, lambdas: JSArray Float, mus: JSArray Float,
-                                 thetas: JSArray Float}} }
+                                 thetas: JSArray Float},
+                            modes: JSArray { lambdas: JSArray Float, mus: JSArray Float,
+                                             thetas: JSArray Float }} }
 
 responseToLVJSON : Response JSString -> Maybe LVJSON
 responseToLVJSON resp = 
@@ -445,20 +460,28 @@ phaseCorrect x = case x of
   (a::((b::_) as r)) -> if b - a > pi then (a + 2*pi)::(phaseCorrect r) else a::(phaseCorrect r)
   l -> l
 
-lvJSONToModel : [ElementID] -> Maybe LVJSON -> GLPrimModel
-lvJSONToModel showElems resp =
+lvJSONToModel : Maybe LVJSON -> [Float] -> Int -> GLPrimModel
+lvJSONToModel resp modeWeights distNo =
   case resp of
     Nothing -> placeholderModel
     Just rawData ->
       let
-        localLambdas = linearRemapArray rawData.localToGlobalLambda
-                              (rawLookup rawData.distributions 0).averages.lambdas
-        localMus = simpleRemapArray rawData.localToGlobalMuTheta
-                              (rawLookup rawData.distributions 0).averages.mus
+        distrib = rawLookup rawData.distributions distNo
+        modes = toList distrib.modes
+        globalLambdas = linearCombine ({ mup = 1.0, values = distrib.averages.lambdas }::
+                                          zipWith (\w m -> { mup = w, values = m.lambdas }) modeWeights modes
+                                      )
+        globalMus = linearCombine ({ mup = 1.0, values = distrib.averages.mus }::
+                                          zipWith (\w m -> { mup = w, values = m.mus }) modeWeights modes
+                                  )
+        globalThetas = linearCombine ({ mup = 1.0, values = distrib.averages.thetas }::
+                                          zipWith (\w m -> { mup = w, values = m.thetas }) modeWeights modes
+                                     )
+        localLambdas = linearRemapArray rawData.localToGlobalLambda globalLambdas
+        localMus = simpleRemapArray rawData.localToGlobalMuTheta globalMus
         localThetas =
           fromList . phaseCorrect . toList <|
-            simpleRemapArray rawData.localToGlobalMuTheta
-              (rawLookup rawData.distributions 0).averages.thetas
+            simpleRemapArray rawData.localToGlobalMuTheta globalThetas
 
         trilinearLookupValue values (ElementID elid) (TrilinearLocalNode ln) =
           rawLookup values ((elid - 1) * nTrilinearLocalNodes + (ln - 1))
@@ -541,27 +564,34 @@ lvJSONToModel showElems resp =
             ) [0..(refineX - 2)]
       in
        GLPrimModel { primitives =
-                       concatMap (\surf -> concatMap (\elID -> elementPrims elID surf) showElems)
+                       concatMap (\surf -> concatMap (\elID -> elementPrims elID surf) allElements)
                                  allSurfaces }
 
-baseModel : Signal GLPrimModel
-baseModel = lvJSONToModel allElements <~ lvJSON
+modeWeights : [(Signal Element, Signal Float)]
+modeWeights =
+  map (\_ -> slider canvasWidth 8 (0-2.0) 2.0 0.01 0.0) [1..6]
+
+primModel : Signal GLPrimModel
+primModel = lvJSONToModel <~ lvJSON ~ combine (map snd modeWeights) ~ constant 0
 
 main : Signal Element
 main =
-  pureMain <~ baseModel ~ cameraMatrix
+  flow down <~ combine ((makeSceneView <~ primModel ~ cameraMatrix)::
+                        (map (\(idx, (modeElem, _)) -> labelSlider idx <~ modeElem) (zip [1..6] modeWeights)))
 
-pureMain baseModelValue cameraMatrixValue =
+labelSlider : Int -> Element -> Element
+labelSlider idx sliderElem = (plainText <| "Mode " ++ (show idx) ++ ": ") `beside` sliderElem
+
+makeSceneView : GLPrimModel -> GLProjection -> Element
+makeSceneView primModelValue cameraMatrixValue =
     let
       camPerspect = myPerspectiveMatrix `multiply4x4` cameraMatrixValue
       rotatedDiffuseDirection = vec4ToXYZ <| (mat4ToInverseMat3 cameraMatrixValue) `mat4x4xv` initialDiffuseDirection
     in
-     (glSceneObject canvasWidth canvasHeight baseModelValue
+     (glSceneObject canvasWidth canvasHeight primModelValue
       (GLPrimSceneView { projection = camPerspect,
                          ambientColour = GLColour 1 1 1,
                          diffuseColour = GLColour 1 1 1,
                          ambientIntensity = 0.4,
                          diffuseIntensity = 0.3,
                          diffuseDirection = rotatedDiffuseDirection }))
-     -- `above` asText cameraMatrixValue
-
