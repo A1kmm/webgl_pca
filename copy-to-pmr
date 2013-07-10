@@ -1,0 +1,16 @@
+#!/bin/bash
+
+TARGDIR="$1"
+if [[ ! -d "$TARGDIR" || ! -d "$TARGDIR/.hg" ]]; then
+  echo "Usage: $0 pmr-repository-directory"
+  exit 1
+fi
+
+if [[ ! -f ElmFiles/Main.html ]]; then
+  elm -r elm-runtime.js --minify --make Main.elm
+fi
+
+cp ElmFiles/Main.html "$TARGDIR"
+cp ~/.cabal/share/Elm-0.8.0.3/elm-runtime.js "$TARGDIR"
+cp LV.json "$TARGDIR"
+cp docs/README-for-PMR "$TARGDIR/README"

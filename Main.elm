@@ -407,7 +407,7 @@ canvasHeight = 500
 
 initialDiffuseDirection = Vector4 (0-0.3) (0-0.5) (0-0.8) 1
 
-lvJSON = lift responseToLVJSON (sendRaw (constant <| Http.get ("../LV.json")))
+lvJSON = lift responseToLVJSON (sendRaw (constant <| Http.get ("LV.json")))
 
 surfaceToFloat x = case x of
   Endocardial -> 0
