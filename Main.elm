@@ -315,11 +315,12 @@ updateCameraMoveState (shift, ctrl, keysDown, touches) oldMoveState =
  
                       alpha = if modChangeVector > 0 && modPositionVector > 0 then abs(x * xChange + y * yChange)/modChangeVector/modPositionVector else 1.0
 
-                      phi   = alpha * xChange
-                      theta = alpha * yChange
-                      psi   = ((y * xChange) - (x * yChange))
+                      rx = alpha * yChange
+                      ry = alpha * xChange
+                      rz = ((y * xChange) - (x * yChange))
 
-                      rotQuaternion = eulerToQuaternion phi psi theta
+                      -- Since the rotation is "infinitesimal", the rotation quaternion can be constructed simply by projecting from the tangent space onto the unit quaternion sphere.
+                      rotQuaternion = normaliseQuaternion (Quaternion 1 rx ry rz)
                     in
                       { oldMoveState | cameraQuaternion <-
                         normaliseQuaternion ( oldMoveState.cameraQuaternion `multiplyQuaternion` rotQuaternion ),
