@@ -27,7 +27,7 @@ Elm.Native.Graphics.Slider = function(elm) {
             if (pendingSliders[i].events != null) {
                 (function() {
                     var events = pendingSliders[i].events.id;
-                    pendingSliders[i].model.change = function(e, ui) {
+                    pendingSliders[i].model.slide = function(e, ui) {
                         elm.notify(events, ui.value);
                     }
                 })();
