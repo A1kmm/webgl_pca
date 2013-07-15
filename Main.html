@@ -1,32 +1,383 @@
 <!DOCTYPE HTML>
-<html><head><meta charset="UTF-8"><title>Visualising uncertainty in a cardiac LV model</title><script type="text/javascript" src="elm-runtime.js"></script><script type="text/javascript">Elm.Native.Graphics.Slider=function(elm){"use strict";elm.Native=elm.Native||{};elm.Native.Graphics=elm.Native.Graphics||{};if(elm.Native.Graphics.Slider!=null)return elm.Native.Graphics.Slider;var Signal=Elm.Signal(elm),newElement=Elm.Graphics.Element(elm).newElement,Tuple2=Elm.Native.Utils(elm).Tuple2,pendingSliders=[],jqReady=false
-function jqready(){jqReady=true;processSliderQueue()}
-function processSliderQueue(){if(!jqReady)return;for(var i in pendingSliders){var jqel=$(pendingSliders[i].element);if(pendingSliders[i].events!=null)(function(){var events=pendingSliders[i].events.id;pendingSliders[i].model.change=function(e,ui){elm.notify(events,ui.value)}})();jqel.slider(pendingSliders[i].model)};pendingSliders=[]};var jq=Elm.Native.JQuery(elm);jq.subscribejQueryReady(jqready)
-function renderSlider(events){return function(model){var slider=document.createElement('div');pendingSliders.push({model:model,element:slider,events:events});processSliderQueue();return slider}}
-function updateSlider(slider,oldModel,newModel){if(oldModel==newModel)return;var changeModel={};if(oldModel.min!=newModel.min)changeModel.min=newModel.min;if(oldModel.max!=newModel.max)changeModel.max=newModel.max;if(oldModel.step!=newModel.step)changeModel.step=newModel.step;if(oldModel.value!=newModel.value)changeModel.value=newModel.value;pendingSliders.push({model:changeModel,element:slider});processSliderQueue();return false}
-function slider(w,h,min,max,step,defaultValue){var events=Signal.constant(defaultValue),elem=A3(newElement,w,h,{ctor:'Custom',type:'Slider',render:renderSlider(events),update:updateSlider,props:{},model:{w:w,h:h,min:min,max:max,step:step,value:defaultValue}});return Tuple2(Signal.constant(elem),events)};return elm.Native.Graphics.Slider={slider:F6(slider)}};Elm.Native.JQuery=function(elm){"use strict";elm.Native=elm.Native||{};if(elm.Native.JQuery)return elm.Native.JQuery;var count=0,jqueryUsers=[]
-function subscribejQueryReady(f){jqueryUsers.push(f)}
-function jqueryLoaded(){count++;if(count!=2)return;for(var i in jqueryUsers)jqueryUsers[i]()};var cse=document.createElement("link");cse.setAttribute("rel","stylesheet");cse.setAttribute("type","text/css");cse.setAttribute("href","http://code.jquery.com/ui/1.10.3/themes/ui-lightness/jquery-ui.min.css");document.head.appendChild(cse);var scr=document.createElement("script");scr.setAttribute("src","http://code.jquery.com/jquery-1.10.2.min.js");scr.setAttribute("type","text/javascript");scr.onload=jqueryLoaded;document.head.appendChild(scr);scr=document.createElement("script");scr.setAttribute("src","http://code.jquery.com/ui/1.10.3/jquery-ui.min.js");scr.setAttribute("type","text/javascript");scr.onload=jqueryLoaded;document.head.appendChild(scr);return elm.Native.JQuery={subscribejQueryReady:subscribejQueryReady}};Elm.Native.FastJSON=function(elm){"use strict";elm.Native=elm.Native||{};if(elm.Native.FastJSON)return elm.Native.FastJSON;var NJS=Elm.Native.JavaScript(elm),JS=Elm.JavaScript(elm),List=Elm.List(elm),Signal=Elm.Signal(elm)
-function registerReq(queue,responses){return function(req){if(req.url.ctor!=='[]')sendReq(queue,responses,req)}}
-function updateQueue(queue,responses){if(queue.length>0){elm.notify(responses.id,queue[0].value);if(queue[0].value.ctor!=='Waiting'){queue.shift();setTimeout(function(){updateQueue(queue,responses)},0)}}}
-function setHeader(pair){request.setRequestHeader(JS.fromString(pair._0),JS.fromString(pair._1))}
-function sendReq(queue,responses,req){var response={value:{ctor:'Waiting'}};queue.push(response);var request=null;if(window.ActiveXObject)request=new ActiveXObject("Microsoft.XMLHTTP");if(window.XMLHttpRequest)request=new XMLHttpRequest();request.onreadystatechange=function(e){if(request.readyState===4){response.value=(request.status>=200&&request.status<300?{ctor:'Success',_0:(request.responseText)}:{ctor:'Failure',_0:request.status,_1:JS.toString(request.statusText)});setTimeout(function(){updateQueue(queue,responses)},0)}};request.open(JS.fromString(req.verb),JS.fromString(req.url),true);List.map(setHeader)(req.headers);request.send(JS.fromString(req.body))}
-function send(requests){var responses=Signal.constant(elm.Http.Waiting),sender=A2(Signal.lift,registerReq([],responses),requests)
-function f(x){return function(y){return x}};return A3(Signal.lift2,f,responses,sender)}
-function fastJSON(str){return window.JSON.parse(str)}
-function rawLookup(arr,idx){return arr[idx]}
-function simpleRemapArray(remap,glob){var loc=[];for(var i in remap)loc[remap[i].loc-1]=glob[remap[i].glob-1];return loc}
-function linearRemapArray(remap,glob){var loc=[];for(var i in remap){var newloc=0.0;for(var j in remap[i].globs)newloc+=remap[i].globs[j].mup*glob[remap[i].globs[j].glob-1];glob[remap[i].glob];loc[remap[i].loc-1]=newloc};return loc}
-function linearCombine(parts){parts=NJS.fromList(parts);var accum=parts[0].values.map(function(x){return x*parts[0].mup});for(var i in parts){if(i==0)continue;for(var j in parts[i].values)accum[j]+=parts[i].mup*parts[i].values[j]};return accum}
-function trilinearInterpolate(f,xi){var result=0.0;xi=xi._0;var basisTable=[[1-xi._0,xi._0],[1-xi._1,xi._1],[1-xi._2,xi._2]];for(var i=0;i<2;i++)for(var j=0;j<2;j++)for(var k=0;k<2;k++)result+=basisTable[0][i]*basisTable[1][j]*basisTable[2][k]*f({ctor:"TrilinearLocalNode",_0:i+j*2+k*4+1});return result}
-function bicubicLinearInterpolate(f,xi){var result=0.0;xi=xi._0;var xi0_2=xi._0*xi._0,xi0_3=xi0_2*xi._0,xi1_2=xi._1*xi._1,xi1_3=xi1_2*xi._1,basisTable=[[1-3*xi._0+3*xi0_2-xi0_3,3*xi._0-6*xi0_2+3*xi0_3,3*xi0_2-3*xi0_3,xi0_3],[1-3*xi._1+3*xi1_2-xi1_3,3*xi._1-6*xi1_2+3*xi1_3,3*xi1_2-3*xi1_3,xi1_3],[1-xi._2,xi._2]];for(var i=0;i<4;i++)for(var j=0;j<4;j++)for(var k=0;k<2;k++)result+=basisTable[0][i]*basisTable[1][j]*basisTable[2][k]*f({ctor:"BicubicLinearLocalNode",_0:i+j*4+k*16+1});return result};return elm.Native.FastJSON={fastJSON:fastJSON,rawLookup:F2(rawLookup),send:send,simpleRemapArray:F2(simpleRemapArray),linearRemapArray:F2(linearRemapArray),bicubicLinearInterpolate:F2(bicubicLinearInterpolate),trilinearInterpolate:F2(trilinearInterpolate),linearCombine:linearCombine}};Elm.Native.Graphics.WebGLScene=function(elm){"use strict";var Render=ElmRuntime.use(ElmRuntime.Render.Element),JS=Elm.JavaScript(elm),D=Elm.Dict(elm);elm.Native=elm.Native||{};elm.Native.Graphics=elm.Native.Graphics||{};if(elm.Native.Graphics.WebGLScene)return elm.Native.Graphics.WebGLScene;var vertexShader="attribute mediump vec3 aPos;\
+
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>
+            Main.elm
+        </title>
+        <script type="text/javascript" src="elm-runtime.js">
+            
+        </script>
+        <script type="text/javascript">
+            Elm.Native.Graphics.DynamicInput = function(elm) {
+    "use struct";
+    elm.Native = elm.Native || {};
+    elm.Native.Graphics = elm.Native.Graphics || {};
+    if (elm.Native.Graphics.DynamicInput) return elm.Native.Graphics.DynamicInput;
+
+    var newNode = ElmRuntime.use(ElmRuntime.Render.Utils).newElement;
+    var newElement = Elm.Graphics.Element(elm).newElement;
+    var Utils = Elm.Native.Utils(elm);
+    var Tuple2 = Utils.Tuple2;
+    var JS = Elm.JavaScript(elm);
+    var Signal = Elm.Signal(elm);
+    
+    function dynamicDropDown(defText, defValue) {
+        var events = Signal.constant(defValue);
+        function updateDropdown(node, oldModel, newModel) {
+            node.currentModel = newModel;
+            if (oldModel.options == newModel.options)
+                return;
+            var m;
+            for (var n = node.firstChild; n != null; n = m) {
+                var m = n.nextSibling;
+                node.removeChild(n);
+            }
+            
+            for (var i = 0; i < newModel.options.length; ++i) {
+                var option = newNode('option');
+                var name = JS.fromString(newModel.options[i]._0);
+                option.value = name;
+                option.innerHTML = name;
+                node.appendChild(option);
+            }
+        }
+
+        function renderDropdown(model) {
+            var select = newNode('select');
+            select.currentModel = model;
+            select.addEventListener('change', function() {
+                elm.notify(events.id, select.currentModel.options[select.selectedIndex]._1);
+            });
+
+            updateDropdown(select, {options: null}, model);
+            return select;
+        }
+
+        var element = A3(newElement, 200, 25, {
+            ctor: 'Custom',
+            type: 'DynamicDropDown',
+            render: renderDropdown,
+            update: updateDropdown,
+            model: { options: [{_0: defText, _1: defValue }] }
+        });
+        return Tuple2({ctor: 'DynamicDropdown', element: element }, events);
+    }
+
+    function dropDownToElement(dropDown, options) {
+        var e = dropDown.element;
+        var p = dropDown.element.props;
+        dropDown.element =
+            { props:
+              { id: Utils.guid(), width: p.width,
+                height: p.height, opacity: p.opacity,
+                color: p.color, href: p.href, tag: p.tag,
+                hover: p.hover },
+              element: { ctor: 'Custom', type: 'DynamicDropdown',
+                         render: e.element.render,
+                         update: e.element.update,
+                         model: { options: JS.fromList(options) }
+                       }
+            };
+        return dropDown.element;
+    }
+
+    return elm.Native.Graphics.DynamicInput = { dynamicDropDown: F2(dynamicDropDown),
+                                                dropDownToElement: F2(dropDownToElement) };
+};
+Elm.Native.Graphics.Slider = function(elm) {
+    "use strict";
+
+    elm.Native = elm.Native || {};
+    elm.Native.Graphics = elm.Native.Graphics || {};
+
+    if (elm.Native.Graphics.Slider != null)
+        return elm.Native.Graphics.Slider;
+
+    var Signal = Elm.Signal(elm);
+    var newElement = Elm.Graphics.Element(elm).newElement;
+    var Tuple2 = Elm.Native.Utils(elm).Tuple2;
+
+    var pendingSliders = [];
+    var jqReady = false;
+
+    function jqready() {
+        jqReady = true;
+        processSliderQueue();
+    }
+
+    function processSliderQueue() {
+        if (!jqReady)
+            return;
+        for (var i in pendingSliders) {
+            var jqel = $(pendingSliders[i].element);
+            if (pendingSliders[i].events != null) {
+                (function() {
+                    var events = pendingSliders[i].events.id;
+                    pendingSliders[i].model.change = function(e, ui) {
+                        elm.notify(events, ui.value);
+                    }
+                })();
+            }
+            jqel.slider(pendingSliders[i].model);
+        }
+        pendingSliders = [];
+    }
+
+    var jq = Elm.Native.JQuery(elm);
+    jq.subscribejQueryReady(jqready);
+
+    function renderSlider(events) {
+        return function (model) {
+            var slider = document.createElement('div');
+            pendingSliders.push({model: model, element: slider, events: events });
+            processSliderQueue();
+            return slider;
+        }
+    }
+
+    function updateSlider(slider, oldModel, newModel) {
+        if (oldModel == newModel)
+            return;
+        var changeModel = {};
+        if (oldModel.min != newModel.min)
+            changeModel.min = newModel.min;
+        if (oldModel.max != newModel.max)
+            changeModel.max = newModel.max;
+        if (oldModel.step != newModel.step)
+            changeModel.step = newModel.step;
+        if (oldModel.value != newModel.value)
+            changeModel.value = newModel.value;
+        pendingSliders.push({model: changeModel, element: slider});
+        processSliderQueue();
+        return false;
+    }
+
+    function slider(w,h,min,max,step,defaultValue) {
+        var events = Signal.constant(defaultValue);
+        var elem = A3(newElement, w, h, {
+            ctor: 'Custom',
+            type: 'Slider',
+            render: renderSlider(events),
+            update: updateSlider,
+            props: {},
+            model: {w:w, h:h, min: min, max: max, step: step, value: defaultValue }
+                  });
+        return Tuple2(Signal.constant(elem), events);
+    }
+
+    return elm.Native.Graphics.Slider = { slider: F6(slider) };
+}
+Elm.Native.JQuery = function(elm) {
+    "use strict";
+    elm.Native = elm.Native || {};
+    if (elm.Native.JQuery) return elm.Native.JQuery;
+    
+    var count = 0;
+
+    var jqueryUsers = [];
+
+    function subscribejQueryReady(f) {
+        jqueryUsers.push(f);
+    }
+
+    function jqueryLoaded() {
+        count++;
+        if (count != 2)
+            return;
+        for (var i in jqueryUsers)
+            jqueryUsers[i]();
+    }
+
+    var cse = document.createElement("link");
+    cse.setAttribute("rel", "stylesheet");
+    cse.setAttribute("type", "text/css");
+    cse.setAttribute("href", "http://code.jquery.com/ui/1.10.3/themes/ui-lightness/jquery-ui.min.css");
+    document.head.appendChild(cse);
+
+    var scr = document.createElement("script");
+    scr.setAttribute("src", "http://code.jquery.com/jquery-1.10.2.min.js");
+    scr.setAttribute("type", "text/javascript");
+    scr.onload = jqueryLoaded;
+    document.head.appendChild(scr);
+
+    scr = document.createElement("script");
+    scr.setAttribute("src", "http://code.jquery.com/ui/1.10.3/jquery-ui.min.js");
+    scr.setAttribute("type", "text/javascript");
+    scr.onload = jqueryLoaded;
+    document.head.appendChild(scr);
+
+    return elm.Native.JQuery = { subscribejQueryReady: subscribejQueryReady };
+}
+Elm.Native.FastJSON = function(elm) {
+    "use strict";
+
+    elm.Native = elm.Native || {};
+    if (elm.Native.FastJSON) return elm.Native.FastJSON;
+
+    var NJS = Elm.Native.JavaScript(elm);
+    var JS = Elm.JavaScript(elm);
+    var List = Elm.List(elm);
+    var Signal = Elm.Signal(elm);
+
+    /* The follow code is just like Native.Http except that it keeps everything
+     * as a JSString.
+     */
+    function registerReq(queue,responses) { return function(req) {
+        if (req.url.ctor !== '[]') { sendReq(queue,responses,req); }
+    };
+                                          }
+
+    function updateQueue(queue,responses) {
+        if (queue.length > 0) {
+            elm.notify(responses.id, queue[0].value);
+            if (queue[0].value.ctor !== 'Waiting') {
+                queue.shift();
+                setTimeout(function() { updateQueue(queue,responses); }, 0);
+            }
+        }
+    }
+
+    function setHeader(pair) {
+        request.setRequestHeader( JS.fromString(pair._0), JS.fromString(pair._1) );
+    }
+
+    function sendReq(queue,responses,req) {
+        var response = { value: { ctor:'Waiting' } };
+        queue.push(response);
+
+        var request = null;
+        if (window.ActiveXObject)  { request = new ActiveXObject("Microsoft.XMLHTTP"); }
+        if (window.XMLHttpRequest) { request = new XMLHttpRequest(); }
+        request.onreadystatechange = function(e) {
+            if (request.readyState === 4) {
+                response.value = (request.status >= 200 && request.status < 300 ?
+                                  { ctor:'Success', _0:(request.responseText) } :
+                                  { ctor:'Failure', _0:request.status, _1:JS.toString(request.statusText) });
+                setTimeout(function() { updateQueue(queue,responses); }, 0);
+            }
+        };
+        request.open(JS.fromString(req.verb), JS.fromString(req.url), true);
+        List.map(setHeader)(req.headers);
+        request.send(JS.fromString(req.body));
+    }
+
+    function send(requests) {
+        var responses = Signal.constant(elm.Http.Waiting);
+        var sender = A2( Signal.lift, registerReq([],responses), requests );
+        function f(x) { return function(y) { return x; } }
+        return A3( Signal.lift2, f, responses, sender );
+    }
+
+    function fastJSON(str) {
+        return window.JSON.parse(str);
+    }
+
+    function rawLookup(arr, idx) {
+        return arr[idx];
+    }
+
+    function simpleRemapArray(remap, glob) {
+        var loc = [];
+        for (var i in remap)
+            loc[remap[i].loc - 1] = glob[remap[i].glob - 1];
+        return loc;
+    }
+
+    function linearRemapArray(remap, glob) {
+        var loc = [];
+        for (var i in remap) {
+            var newloc = 0.0;
+            for (var j in remap[i].globs)
+                newloc += remap[i].globs[j].mup * glob[remap[i].globs[j].glob - 1];
+            glob[remap[i].glob]
+            loc[remap[i].loc - 1] = newloc;
+        }
+        return loc;
+    }
+
+    function linearCombine(parts) {
+        parts = NJS.fromList(parts);
+        var accum = parts[0].values.map(function(x) { return x * parts[0].mup; });
+        for (var i in parts) {
+            if (i == 0) continue;
+            for (var j in parts[i].values)
+                accum[j] += parts[i].mup * parts[i].values[j];
+        }
+        return accum;
+    }
+
+    function trilinearInterpolate(f, xi) {
+        var result = 0.0;
+        xi = xi._0;
+        var basisTable = [[1 - xi._0, xi._0], [1 - xi._1, xi._1], [1 - xi._2, xi._2]];
+        for (var i = 0; i < 2; i++) {
+            for (var j = 0; j < 2; j++) {
+                for (var k = 0; k < 2; k++) {
+                    result += basisTable[0][i] * basisTable[1][j] * basisTable[2][k] * f({ctor: "TrilinearLocalNode", _0: i + j * 2 + k * 4 + 1});
+                }
+            }
+        }
+        return result;
+    }
+
+    function bicubicLinearInterpolate(f, xi) {
+        var result = 0.0;
+        xi = xi._0;
+        // console.log(xi);
+        var xi0_2 = xi._0 * xi._0, xi0_3 = xi0_2 * xi._0,
+            xi1_2 = xi._1 * xi._1, xi1_3 = xi1_2 * xi._1;
+        var basisTable = [[1 - 3 * xi._0 + 3 * xi0_2 - xi0_3,
+                           3 * xi._0 - 6 * xi0_2 + 3 * xi0_3,
+                           3 * xi0_2 - 3 * xi0_3, xi0_3],
+                          [1 - 3 * xi._1 + 3 * xi1_2 - xi1_3,
+                           3 * xi._1 - 6 * xi1_2 + 3 * xi1_3,
+                           3 * xi1_2 - 3 * xi1_3, xi1_3],
+                          [1 - xi._2, xi._2]];
+        for (var i = 0; i < 4; i++) {
+            for (var j = 0; j < 4; j++) {
+                for (var k = 0; k < 2; k++) {
+                    result += basisTable[0][i] * basisTable[1][j] * basisTable[2][k] * f({ctor: "BicubicLinearLocalNode", _0: i + j * 4 + k * 16 + 1});
+                }
+            }
+        }
+        return result;
+    }
+
+    return elm.Native.FastJSON = { fastJSON: fastJSON,
+                                   rawLookup: F2(rawLookup),
+                                   send: send,
+                                   simpleRemapArray: F2(simpleRemapArray),
+                                   linearRemapArray: F2(linearRemapArray),
+                                   bicubicLinearInterpolate: F2(bicubicLinearInterpolate),
+                                   trilinearInterpolate: F2(trilinearInterpolate),
+                                   linearCombine: linearCombine
+                                 };
+};
+Elm.Native.Graphics.WebGLScene = function(elm) {
+    "use strict";
+
+    var Render = ElmRuntime.use(ElmRuntime.Render.Element);
+    var JS = Elm.JavaScript(elm);
+    var D = Elm.Dict(elm);
+
+    elm.Native = elm.Native || {};
+    elm.Native.Graphics = elm.Native.Graphics || {};
+    if (elm.Native.Graphics.WebGLScene) return elm.Native.Graphics.WebGLScene;
+    
+    // Simple matrix projection...
+    var vertexShader = "attribute mediump vec3 aPos;\
                         attribute mediump vec3 aNormal;\
                         varying mediump vec3 normal;\
                         uniform mediump mat4 aProjection;\
                         void main(void) {\
                           normal = normalize(aNormal);\
                           gl_Position = aProjection * vec4(aPos, 1.0); \
-                        }",fragmentShader="varying mediump vec3 normal;\
+                        }";
+    // For now, everything is green.
+    var fragmentShader =
+        "varying mediump vec3 normal;\
          uniform mediump vec3 aAmbientColour, aDiffuse1Colour;\
          uniform mediump vec3 aDiffuse1Direction;\
          uniform mediump float aAmbientIntensity, aDiffuse1Intensity;\
@@ -35,8 +386,1052 @@ function bicubicLinearInterpolate(f,xi){var result=0.0;xi=xi._0;var xi0_2=xi._0*
                       aDiffuse1Colour * aDiffuse1Intensity * \
                       clamp(dot(normal, normalize(aDiffuse1Direction)), 0.0, 1.0);\
            gl_FragColor = vec4(rgb, 1.0);\
-                         }",newElement=Elm.Graphics.Element(elm).newElement
-function renderGLScene(model){var jscanvas=document.createElement("canvas");jscanvas.width=model.w;jscanvas.height=model.h;newContext(jscanvas);updateGLScene(jscanvas,{w:0,h:0,model:null,projection:null},model);return jscanvas}
-function newContext(jscanvas){var ctx=jscanvas.getContext("webgl")||jscanvas.getContext("experimental-webgl");ctx.viewport(0,0,500,500);var shaderProgram=ctx.createProgram();ctx.enable(ctx.DEPTH_TEST);var vertShad=ctx.createShader(ctx.VERTEX_SHADER);ctx.shaderSource(vertShad,vertexShader);ctx.compileShader(vertShad);ctx.attachShader(shaderProgram,vertShad);var fragShad=ctx.createShader(ctx.FRAGMENT_SHADER);ctx.shaderSource(fragShad,fragmentShader);ctx.compileShader(fragShad);ctx.attachShader(shaderProgram,fragShad);ctx.linkProgram(shaderProgram);ctx.useProgram(shaderProgram);var shadeData={aPos:ctx.getAttribLocation(shaderProgram,"aPos"),aNormal:ctx.getAttribLocation(shaderProgram,"aNormal"),aProjection:ctx.getUniformLocation(shaderProgram,"aProjection"),aAmbientColour:ctx.getUniformLocation(shaderProgram,"aAmbientColour"),aAmbientIntensity:ctx.getUniformLocation(shaderProgram,"aAmbientIntensity"),aDiffuse1Colour:ctx.getUniformLocation(shaderProgram,"aDiffuse1Colour"),aDiffuse1Direction:ctx.getUniformLocation(shaderProgram,"aDiffuse1Direction"),aDiffuse1Intensity:ctx.getUniformLocation(shaderProgram,"aDiffuse1Intensity")};ctx.enableVertexAttribArray(shadeData.aPos);ctx.enableVertexAttribArray(shadeData.aNormal);jscanvas.shadeData=shadeData;jscanvas.ctx=ctx;return ctx}
-function updateGLScene(jscanvas,curr,next){jscanvas.width=next.w;jscanvas.height=next.h;if(jscanvas.ctx==null)return;jscanvas.ctx.viewport(0,0,next.w,next.h);var modelChanged=next.model!=curr.model,sceneChanged=next.sceneview!=curr.sceneview;if(modelChanged||sceneChanged){jscanvas.ctx.clearColor(0.0,0.0,0.0,1.0);jscanvas.ctx.clearDepth(65535);jscanvas.ctx.depthFunc(jscanvas.ctx.LESS);jscanvas.ctx.clear(jscanvas.ctx.COLOR_BUFFER_BIT|jscanvas.ctx.DEPTH_BUFFER_BIT)};var jsmodel=next.model._0;if(modelChanged){var jsprims=JS.fromList(jsmodel.primitives);jscanvas.nNodes=jsprims.length*3;var nodalPos=new Float32Array(3*jscanvas.nNodes),normals=new Float32Array(3*jscanvas.nNodes);for(var primID in jsprims){var thisPrim=jsprims[primID];nodalPos.set([thisPrim._0._0,thisPrim._0._1,thisPrim._0._2,thisPrim._1._0,thisPrim._1._1,thisPrim._1._2,thisPrim._2._0,thisPrim._2._1,thisPrim._2._2,],9*primID);var ux=thisPrim._1._0-thisPrim._0._0,uy=thisPrim._1._1-thisPrim._0._1,uz=thisPrim._1._2-thisPrim._0._2,vx=thisPrim._2._0-thisPrim._0._0,vy=thisPrim._2._1-thisPrim._0._1,vz=thisPrim._2._2-thisPrim._0._2,Nx=uy*vz-uz*vy,Ny=uz*vx-ux*vz,Nz=ux*vy-uy*vx;normals.set([Nx,Ny,Nz,Nx,Ny,Nz,Nx,Ny,Nz],9*primID)};jscanvas.ctx.bindBuffer(jscanvas.ctx.ARRAY_BUFFER,jscanvas.ctx.createBuffer());jscanvas.ctx.bufferData(jscanvas.ctx.ARRAY_BUFFER,nodalPos,jscanvas.ctx.STATIC_DRAW);jscanvas.ctx.vertexAttribPointer(jscanvas.shadeData.aPos,3,jscanvas.ctx.FLOAT,false,0,0);jscanvas.ctx.bindBuffer(jscanvas.ctx.ARRAY_BUFFER,jscanvas.ctx.createBuffer());jscanvas.ctx.bufferData(jscanvas.ctx.ARRAY_BUFFER,normals,jscanvas.ctx.STATIC_DRAW);jscanvas.ctx.vertexAttribPointer(jscanvas.shadeData.aNormal,3,jscanvas.ctx.FLOAT,false,0,0)};if(sceneChanged){var sv=next.sceneview._0;jscanvas.ctx.uniformMatrix4fv(jscanvas.shadeData.aProjection,false,[sv.projection._0._0,sv.projection._1._0,sv.projection._2._0,sv.projection._3._0,sv.projection._0._1,sv.projection._1._1,sv.projection._2._1,sv.projection._3._1,sv.projection._0._2,sv.projection._1._2,sv.projection._2._2,sv.projection._3._2,sv.projection._0._3,sv.projection._1._3,sv.projection._2._3,sv.projection._3._3]);jscanvas.ctx.uniform1f(jscanvas.shadeData.aAmbientIntensity,sv.ambientIntensity);jscanvas.ctx.uniform1f(jscanvas.shadeData.aDiffuse1Intensity,sv.diffuseIntensity);jscanvas.ctx.uniform3f(jscanvas.shadeData.aAmbientColour,sv.ambientColour._0,sv.ambientColour._1,sv.ambientColour._2);jscanvas.ctx.uniform3f(jscanvas.shadeData.aDiffuse1Colour,sv.diffuseColour._0,sv.diffuseColour._1,sv.diffuseColour._2);jscanvas.ctx.uniform3f(jscanvas.shadeData.aDiffuse1Direction,sv.diffuseDirection._0,sv.diffuseDirection._1,sv.diffuseDirection._2)};if(modelChanged||sceneChanged){jscanvas.ctx.drawArrays(jscanvas.ctx.TRIANGLES,0,jscanvas.nNodes);jscanvas.ctx.flush()};return false}
-function glSceneObject(w,h,model,sceneview){return A3(newElement,w,h,{ctor:'Custom',type:'WebGL',render:renderGLScene,update:updateGLScene,props:{},model:{w:w,h:h,model:model,sceneview:sceneview}})};return elm.Native.Graphics.WebGLScene={glSceneObject:F4(glSceneObject)}};Elm.Main=function(elm){var N=Elm.Native,_N=N.Utils(elm),_L=N.List(elm),_E=N.Error(elm),_J=N.JavaScript(elm),_str=_J.toString,$op={},_=Elm.Text(elm),Text=_,hiding={link:1,color:1,height:1};for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')};var _=Elm.Prelude(elm),Prelude=_,hiding={};for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')};var _=Elm.Signal(elm),Signal=_,hiding={};for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')};var _=Elm.List(elm),List=_,hiding={};for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')};var _=Elm.Maybe(elm),Maybe=_,hiding={};for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')};var _=Elm.Time(elm),Time=_,hiding={};for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')};var _=Elm.Graphics.Element(elm),Graphics=Graphics||{};Graphics.Element=_;var hiding={};for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')};var _=Elm.Color(elm),Color=_,hiding={};for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')};var _=Elm.Graphics.Collage(elm),Graphics=Graphics||{};Graphics.Collage=_;var hiding={};for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')};var N=Elm.Native.Graphics.WebGLScene(elm),NJSON=Elm.Native.FastJSON(elm),_=Elm.Dict(elm),Dict=_,_=Elm.Mouse(elm),Mouse=_,_=Elm.Keyboard(elm),Keyboard=_,_=Elm.Touch(elm),Touch=_,_=Elm.Http(elm),Http=_,Success=_.Success,Waiting=_.Waiting,Failure=_.Failure,_=Elm.Json(elm),Json=_,_=Elm.JavaScript.Experimental(elm),JavaScript=JavaScript||{};JavaScript.Experimental=_;var _=Elm.Graphics.Input(elm),Graphics=Graphics||{};Graphics.Input=_;var dropDown=_.dropDown,_=Elm.JavaScript(elm),JavaScript=_,fromList=_.fromList,toList=_.toList,fromString=_.fromString,_=Elm.Native.JQuery(elm),Native=Native||{};Native.JQuery=_;var NSLIDE=Elm.Native.Graphics.Slider(elm),Coord3D_0=F3(function(a1,a2,a3){return {ctor:"Coord3D",_0:a1,_1:a2,_2:a3}}),Triangle_1=F3(function(a1,a2,a3){return {ctor:"Triangle",_0:a1,_1:a2,_2:a3}}),GLColour_2=F3(function(a1,a2,a3){return {ctor:"GLColour",_0:a1,_1:a2,_2:a3}}),Vector4_3=F4(function(a1,a2,a3,a4){return {ctor:"Vector4",_0:a1,_1:a2,_2:a3,_3:a4}}),Matrix4x4_4=F4(function(a1,a2,a3,a4){return {ctor:"Matrix4x4",_0:a1,_1:a2,_2:a3,_3:a4}}),Vector3_5=F3(function(a1,a2,a3){return {ctor:"Vector3",_0:a1,_1:a2,_2:a3}}),Quaternion_6=F4(function(a1,a2,a3,a4){return {ctor:"Quaternion",_0:a1,_1:a2,_2:a3,_3:a4}}),GLPrimModel_7=function(a1){return {ctor:"GLPrimModel",_0:a1}},GLPrimSceneView_8=function(a1){return {ctor:"GLPrimSceneView",_0:a1}},TranslateXY_44={ctor:"TranslateXY"},TranslateXZ_45={ctor:"TranslateXZ"},CameraRotate_46={ctor:"CameraRotate"},CameraTranslate_47=function(a1){return {ctor:"CameraTranslate",_0:a1}},DETERMINE_55={ctor:"DETERMINE"},MESA_56={ctor:"MESA"},EndDiastole_57={ctor:"EndDiastole"},EndSystole_58={ctor:"EndSystole"},AverageState_59={ctor:"AverageState"},GlobalMuLambda_63=function(a1){return {ctor:"GlobalMuLambda",_0:a1}},GlobalTheta_64=function(a1){return {ctor:"GlobalTheta",_0:a1}},ElementID_65=function(a1){return {ctor:"ElementID",_0:a1}},BicubicLinearLocalNode_66=function(a1){return {ctor:"BicubicLinearLocalNode",_0:a1}},TrilinearLocalNode_67=function(a1){return {ctor:"TrilinearLocalNode",_0:a1}},Endocardial_68={ctor:"Endocardial"},Epicardial_69={ctor:"Epicardial"},RefinedNodeID_70=function(a1){return {ctor:"RefinedNodeID",_0:a1}},Prolate_71=function(a1){return {ctor:"Prolate",_0:a1}},Xi_72=function(a1){return {ctor:"Xi",_0:a1}},vec4ToXYZ_20=function(_84000_103){return function(){switch(_84000_103.ctor){case'Vector4':return A3(Vector3_5,_84000_103._0,_84000_103._1,_84000_103._2)};_E.Case('Line 84, Column 31')}()},matrix4x4Row_21=F2(function(row_107,_92000_108){return function(){switch(_92000_108.ctor){case'Matrix4x4':return function(){switch(row_107){case 0:return _92000_108._0;case 1:return _92000_108._1;case 2:return _92000_108._2;case 3:return _92000_108._3};_E.Case('Line 88, Column 3')}()};_E.Case('Line 88, Column 3')}()}),matrix4x4Column_22=F2(function(row_113,_103000_114){return function(){switch(_103000_114.ctor){case'Matrix4x4':switch(_103000_114._0.ctor){case'Vector4':switch(_103000_114._1.ctor){case'Vector4':switch(_103000_114._2.ctor){case'Vector4':switch(_103000_114._3.ctor){case'Vector4':return function(){switch(row_113){case 0:return A4(Vector4_3,_103000_114._0._0,_103000_114._1._0,_103000_114._2._0,_103000_114._3._0);case 1:return A4(Vector4_3,_103000_114._0._1,_103000_114._1._1,_103000_114._2._1,_103000_114._3._1);case 2:return A4(Vector4_3,_103000_114._0._2,_103000_114._1._2,_103000_114._2._2,_103000_114._3._2);case 3:return A4(Vector4_3,_103000_114._0._3,_103000_114._1._3,_103000_114._2._3,_103000_114._3._3)};_E.Case('Line 99, Column 3')}()};break};break};break};break};_E.Case('Line 99, Column 3')}()}),dotProduct_23=F2(function(_107001_131,_107000_132){return function(){switch(_107001_131.ctor){case'Vector4':return function(){switch(_107000_132.ctor){case'Vector4':return((((_107001_131._0*_107000_132._0)+(_107001_131._1*_107000_132._1))+(_107001_131._2*_107000_132._2))+(_107001_131._3*_107000_132._3))};_E.Case('Line 107, Column 4')}()};_E.Case('Line 107, Column 4')}()}),multiply4x4_24=F2(function(m1_141,m2_142){return function(){var p_143=F2(function(r_144,c_145){return A2(dotProduct_23,A2(matrix4x4Row_21,r_144,m1_141),A2(matrix4x4Column_22,c_145,m2_142))});return A4(Matrix4x4_4,A4(Vector4_3,A2(p_143,0,0),A2(p_143,0,1),A2(p_143,0,2),A2(p_143,0,3)),A4(Vector4_3,A2(p_143,1,0),A2(p_143,1,1),A2(p_143,1,2),A2(p_143,1,3)),A4(Vector4_3,A2(p_143,2,0),A2(p_143,2,1),A2(p_143,2,2),A2(p_143,2,3)),A4(Vector4_3,A2(p_143,3,0),A2(p_143,3,1),A2(p_143,3,2),A2(p_143,3,3)))}()}),mat4x4xv_25=F2(function(m_146,v_147){return A4(Vector4_3,A2(dotProduct_23,A2(matrix4x4Row_21,0,m_146),v_147),A2(dotProduct_23,A2(matrix4x4Row_21,1,m_146),v_147),A2(dotProduct_23,A2(matrix4x4Row_21,2,m_146),v_147),A2(dotProduct_23,A2(matrix4x4Row_21,3,m_146),v_147))}),transpose4x4_26=function(_134000_148){return function(){switch(_134000_148.ctor){case'Matrix4x4':switch(_134000_148._0.ctor){case'Vector4':switch(_134000_148._1.ctor){case'Vector4':switch(_134000_148._2.ctor){case'Vector4':switch(_134000_148._3.ctor){case'Vector4':return A4(Matrix4x4_4,A4(Vector4_3,_134000_148._0._0,_134000_148._1._0,_134000_148._2._0,_134000_148._3._0),A4(Vector4_3,_134000_148._0._1,_134000_148._1._1,_134000_148._2._1,_134000_148._3._1),A4(Vector4_3,_134000_148._0._2,_134000_148._1._2,_134000_148._2._2,_134000_148._3._2),A4(Vector4_3,_134000_148._0._3,_134000_148._1._3,_134000_148._2._3,_134000_148._3._3))};break};break};break};break};_E.Case('Line 131, Column 3')}()},norm4_27=function(_137000_165){return function(){switch(_137000_165.ctor){case'Vector4':return A3(Vector3_5,(_137000_165._0/_137000_165._3),(_137000_165._1/_137000_165._3),(_137000_165._2/_137000_165._3))};_E.Case('Line 137, Column 31')}()},mat4ToInverseMat3_28=function(_157000_170){return function(){switch(_157000_170.ctor){case'Matrix4x4':switch(_157000_170._0.ctor){case'Vector4':switch(_157000_170._1.ctor){case'Vector4':switch(_157000_170._2.ctor){case'Vector4':switch(_157000_170._3.ctor){case'Vector4':return function(){var b12_187=((_157000_170._2._2*_157000_170._1._1)-(_157000_170._1._2*_157000_170._2._1)),b22_188=((_157000_170._1._2*_157000_170._2._0)-(_157000_170._2._2*_157000_170._1._0)),b32_189=((_157000_170._2._1*_157000_170._1._0)-(_157000_170._1._1*_157000_170._2._0)),det_190=(((_157000_170._0._0*b12_187)+(_157000_170._0._1*b22_188))+(_157000_170._0._2*b32_189)),invDet_191=(_N.eq(det_190,0)?0:(1/det_190));return A4(Matrix4x4_4,A4(Vector4_3,(b12_187*invDet_191),(((_157000_170._0._2*_157000_170._2._1)-(_157000_170._2._2*_157000_170._0._1))*invDet_191),(((_157000_170._1._2*_157000_170._0._1)-(_157000_170._0._2*_157000_170._1._1))*invDet_191),0),A4(Vector4_3,(b22_188*invDet_191),(((_157000_170._2._2*_157000_170._0._0)-(_157000_170._0._2*_157000_170._2._0))*invDet_191),(((_157000_170._0._2*_157000_170._1._0)-(_157000_170._1._2*_157000_170._0._0))*invDet_191),0),A4(Vector4_3,(b32_189*invDet_191),(((_157000_170._0._1*_157000_170._2._0)-(_157000_170._2._1*_157000_170._0._0))*invDet_191),(((_157000_170._1._1*_157000_170._0._0)-(_157000_170._0._1*_157000_170._1._0))*invDet_191),0),A4(Vector4_3,0,0,0,1))}()};break};break};break};break};_E.Case('Line 146, Column 3')}()},quaternionToRotationMatrix_29=function(_163000_192){return function(){switch(_163000_192.ctor){case'Quaternion':return A4(Matrix4x4_4,A4(Vector4_3,(1-(2*((_163000_192._2*_163000_192._2)+(_163000_192._3*_163000_192._3)))),(2*((_163000_192._1*_163000_192._2)+(_163000_192._0*_163000_192._3))),(2*((_163000_192._1*_163000_192._3)-(_163000_192._0*_163000_192._2))),0),A4(Vector4_3,(2*((_163000_192._1*_163000_192._2)-(_163000_192._0*_163000_192._3))),(1-(2*((_163000_192._1*_163000_192._1)+(_163000_192._3*_163000_192._3)))),(2*((_163000_192._2*_163000_192._3)+(_163000_192._0*_163000_192._1))),0),A4(Vector4_3,(2*((_163000_192._1*_163000_192._3)+(_163000_192._0*_163000_192._2))),(2*((_163000_192._2*_163000_192._3)-(_163000_192._0*_163000_192._1))),(1-(2*((_163000_192._1*_163000_192._1)+(_163000_192._2*_163000_192._2)))),0),A4(Vector4_3,0,0,0,1))};_E.Case('Line 160, Column 3')}()},normaliseQuaternion_30=function(_169000_197){return function(){switch(_169000_197.ctor){case'Quaternion':return function(){var norm_202=sqrt(((((_169000_197._0*_169000_197._0)+(_169000_197._1*_169000_197._1))+(_169000_197._2*_169000_197._2))+(_169000_197._3*_169000_197._3)));return A4(Quaternion_6,(_169000_197._0/norm_202),(_169000_197._1/norm_202),(_169000_197._2/norm_202),(_169000_197._3/norm_202))}()};_E.Case('Line 166, Column 3')}()},multiplyQuaternion_31=F2(function(_175001_203,_175000_204){return function(){switch(_175001_203.ctor){case'Quaternion':return function(){switch(_175000_204.ctor){case'Quaternion':return A4(Quaternion_6,((((_175001_203._0*_175000_204._0)-(_175001_203._1*_175000_204._1))-(_175001_203._2*_175000_204._2))-(_175001_203._3*_175000_204._3)),((((_175001_203._2*_175000_204._3)-(_175001_203._3*_175000_204._2))+(_175001_203._0*_175000_204._1))+(_175000_204._0*_175001_203._1)),((((_175001_203._3*_175000_204._1)-(_175001_203._1*_175000_204._3))+(_175001_203._0*_175000_204._2))+(_175000_204._0*_175001_203._2)),((((_175001_203._1*_175000_204._2)-(_175001_203._2*_175000_204._1))+(_175001_203._0*_175000_204._3))+(_175001_203._3*_175000_204._0)))};_E.Case('Line 172, Column 3')}()};_E.Case('Line 172, Column 3')}()}),conjugateQuaternion_32=function(_176000_213){return function(){switch(_176000_213.ctor){case'Quaternion':return A4(Quaternion_6,_176000_213._0,(0-_176000_213._1),(0-_176000_213._2),(0-_176000_213._3))};_E.Case('Line 176, Column 44')}()},rotateVectorByQuaternion_33=F2(function(q_218,_184000_219){return function(){switch(_184000_219.ctor){case'Vector3':return function(){var _182000_223=A2(multiplyQuaternion_31,q_218,A2(multiplyQuaternion_31,A4(Quaternion_6,0,_184000_219._0,_184000_219._1,_184000_219._2),conjugateQuaternion_32(q_218))),x$_224=function(){switch(_182000_223.ctor){case'Quaternion':return _182000_223._1};_E.Case('Line 182, Column 7')}(),y$_225=function(){switch(_182000_223.ctor){case'Quaternion':return _182000_223._2};_E.Case('Line 182, Column 7')}(),z$_226=function(){switch(_182000_223.ctor){case'Quaternion':return _182000_223._3};_E.Case('Line 182, Column 7')}();return A3(Vector3_5,x$_224,y$_225,z$_226)}()};_E.Case('Line 180, Column 3')}()}),eulerToQuaternion_34=F3(function(theta_236,phi_237,psi_238){return function(){var theta2_239=(theta_236/2),phi2_240=(phi_237/2),psi2_241=(psi_238/2),costheta2_242=cos(theta2_239),sintheta2_243=sin(theta2_239),cosphi2_244=cos(phi2_240),sinphi2_245=sin(phi2_240),cospsi2_246=cos(psi2_241),sinpsi2_247=sin(psi2_241);return A4(Quaternion_6,(((cospsi2_246*costheta2_242)*cosphi2_244)+((sinpsi2_247*costheta2_242)*cosphi2_244)),(((sinpsi2_247*costheta2_242)*cosphi2_244)-((cospsi2_246*sintheta2_243)*sinphi2_245)),(((cospsi2_246*sintheta2_243)*cosphi2_244)+((sinpsi2_247*costheta2_242)*sinphi2_245)),(((cospsi2_246*costheta2_242)*sinphi2_245)-((sinpsi2_247*sintheta2_243)*cosphi2_244)))}()}),vectorToTranslationMatrix_35=function(_207000_248){return function(){switch(_207000_248.ctor){case'Vector3':return A4(Matrix4x4_4,A4(Vector4_3,1,0,0,_207000_248._0),A4(Vector4_3,0,1,0,_207000_248._1),A4(Vector4_3,0,0,1,_207000_248._2),A4(Vector4_3,0,0,0,1))};_E.Case('Line 204, Column 3')}()},perspectiveMatrix_42=F4(function(near_265,far_266,aspectRatio_267,fovRadians_268){return function(){var f_269=(1.0/tan((fovRadians_268/2))),nf_270=(1/(near_265-far_266));return A4(Matrix4x4_4,A4(Vector4_3,(f_269/aspectRatio_267),0,0,0),A4(Vector4_3,0,f_269,0,0),A4(Vector4_3,0,0,((far_266+near_265)*nf_270),(((2*far_266)*near_265)*nf_270)),A4(Vector4_3,0,0,-1,0))}()}),CameraMoveState_48=F6(function(cameraQuaternion_271,cameraTransformation_272,processedPosition_273,mainTouch_274,wasDragging_275,cameraModifyMode_276){return {_:{},cameraModifyMode:cameraModifyMode_276,cameraQuaternion:cameraQuaternion_271,cameraTransformation:cameraTransformation_272,mainTouch:mainTouch_274,processedPosition:processedPosition_273,wasDragging:wasDragging_275}}),keyboardAlt_50=function(keysDown_277){return A2(any,function(x_278){return _N.eq(x_278,18)},keysDown_277)},updateCameraMoveState_53=F2(function(_339000_284,oldMoveState_285){return function(){switch(_339000_284.ctor){case'Tuple4':return function(){var dragging_290=(_N.cmp(length(_339000_284._3),0).ctor==='GT');return(not(dragging_290)?_N.replace([['wasDragging',false]],oldMoveState_285):function(){var newCameraModifyMode_291=((_339000_284._0||_N.eq(length(_339000_284._3),2))?CameraTranslate_47(TranslateXY_44):((_339000_284._1||(keyboardAlt_50(_339000_284._2)||(_N.cmp(length(_339000_284._3),2).ctor==='GT')))?CameraTranslate_47(TranslateXZ_45):CameraRotate_46));return(not(oldMoveState_285.wasDragging)?function(){var pointer_292=head(_339000_284._3);return _N.replace([['wasDragging',true],['processedPosition',{ctor:"Tuple2",_0:pointer_292.x,_1:pointer_292.y}],['mainTouch',head(_339000_284._3)],['cameraModifyMode',newCameraModifyMode_291]],oldMoveState_285)}():function(){var previousPointCatcher_293=A2(filter,function(t_298){return _N.eq(t_298.id,oldMoveState_285.mainTouch.id)},_339000_284._3),pointer_294=((_N.cmp(length(previousPointCatcher_293),0).ctor==='GT')?head(previousPointCatcher_293):head(_339000_284._3)),_303000_295=oldMoveState_285.processedPosition,lastX_296=function(){switch(_303000_295.ctor){case'Tuple2':return _303000_295._0};_E.Case('Line 303, Column 34')}(),lastY_297=function(){switch(_303000_295.ctor){case'Tuple2':return _303000_295._1};_E.Case('Line 303, Column 34')}();return function(){var case149=oldMoveState_285.cameraModifyMode;switch(case149.ctor){case'CameraRotate':return function(){var x_303=((2*(toFloat(pointer_294.x)/toFloat(canvasWidth_75)))-1),y_304=((2*(toFloat(pointer_294.y)/toFloat(canvasHeight_76)))-1),modPositionVector_305=sqrt(((x_303*x_303)+(y_304*y_304))),xChange_306=((2*toFloat((lastX_296-pointer_294.x)))/toFloat(canvasWidth_75)),yChange_307=((2*toFloat((lastY_297-pointer_294.y)))/toFloat(canvasHeight_76)),modChangeVector_308=sqrt(((xChange_306*xChange_306)+(yChange_307*yChange_307))),alpha_309=(((_N.cmp(modChangeVector_308,0).ctor==='GT')&&(_N.cmp(modPositionVector_305,0).ctor==='GT'))?((abs(((x_303*xChange_306)+(y_304*yChange_307)))/modChangeVector_308)/modPositionVector_305):1.0),phi_310=(alpha_309*xChange_306),theta_311=(alpha_309*yChange_307),psi_312=((y_304*xChange_306)-(x_303*yChange_307)),rotQuaternion_313=A3(eulerToQuaternion_34,phi_310,psi_312,theta_311);return _N.replace([['cameraQuaternion',normaliseQuaternion_30(multiplyQuaternion_31(oldMoveState_285.cameraQuaternion)(rotQuaternion_313))],['processedPosition',{ctor:"Tuple2",_0:pointer_294.x,_1:pointer_294.y}],['cameraModifyMode',newCameraModifyMode_291],['mainTouch',pointer_294]],oldMoveState_285)}();case'CameraTranslate':return function(){var distanceX_315=((toFloat((pointer_294.x-lastX_296))/toFloat(canvasWidth_75))*50),distanceY_316=((toFloat((pointer_294.y-lastY_297))/toFloat(canvasHeight_76))*50),translateBy_317=function(){switch(case149._0.ctor){case'TranslateXY':return {ctor:"Tuple3",_0:distanceX_315,_1:(0-distanceY_316),_2:0};case'TranslateXZ':return {ctor:"Tuple3",_0:distanceX_315,_1:0,_2:distanceY_316}};_E.Case('Line 331, Column 37')}(),_334000_318=oldMoveState_285.cameraTransformation,otx_319=function(){switch(_334000_318.ctor){case'Vector3':return _334000_318._0};_E.Case('Line 334, Column 45')}(),oty_320=function(){switch(_334000_318.ctor){case'Vector3':return _334000_318._1};_E.Case('Line 334, Column 45')}(),otz_321=function(){switch(_334000_318.ctor){case'Vector3':return _334000_318._2};_E.Case('Line 334, Column 45')}(),_335000_322=translateBy_317,tx_323=function(){switch(_335000_322.ctor){case'Tuple3':return _335000_322._0};_E.Case('Line 335, Column 39')}(),ty_324=function(){switch(_335000_322.ctor){case'Tuple3':return _335000_322._1};_E.Case('Line 335, Column 39')}(),tz_325=function(){switch(_335000_322.ctor){case'Tuple3':return _335000_322._2};_E.Case('Line 335, Column 39')}();return _N.replace([['cameraTransformation',A3(Vector3_5,(otx_319+tx_323),(oty_320+ty_324),(otz_321+tz_325))],['processedPosition',{ctor:"Tuple2",_0:pointer_294.x,_1:pointer_294.y}],['cameraModifyMode',newCameraModifyMode_291],['mainTouch',pointer_294]],oldMoveState_285)}()};_E.Case('Line 305, Column 17')}()}())}())}()};_E.Case('Line 283, Column 3')}()}),LVDistrib_60=F7(function(dataset_345,coordScheme_346,analysis_347,biologicalState_348,components_349,averages_350,modes_351){return {_:{},analysis:analysis_347,averages:averages_350,biologicalState:biologicalState_348,components:components_349,coordScheme:coordScheme_346,dataset:dataset_345,modes:modes_351}}),LVJSON_61=F3(function(localToGlobalMuTheta_352,localToGlobalLambda_353,distributions_354){return {_:{},distributions:distributions_354,localToGlobalLambda:localToGlobalLambda_353,localToGlobalMuTheta:localToGlobalMuTheta_352}}),responseToLVJSON_62=function(resp_355){return function(){switch(resp_355.ctor){case'Failure':return Nothing;case'Success':return Just(fastJSON_11(resp_355._0));case'Waiting':return Nothing};_E.Case('Line 366, Column 3')}()},surfaceToFloat_79=function(x_357){return function(){switch(x_357.ctor){case'Endocardial':return 0;case'Epicardial':return 1};_E.Case('Line 412, Column 20')}()},localNodeIndexBicubicLinear_83=F2(function(_422001_358,_422000_359){return function(){switch(_422001_358.ctor){case'BicubicLinearLocalNode':return function(){switch(_422000_359.ctor){case'ElementID':return((((_422000_359._0-1)*nBicubicLinearLocalNodes_81)+(_422001_358._0-1))+1)};_E.Case('Line 422, Column 4')}()};_E.Case('Line 422, Column 4')}()}),localNodeIndexTrilinear_84=F2(function(_426001_362,_426000_363){return function(){switch(_426001_362.ctor){case'TrilinearLocalNode':return function(){switch(_426000_363.ctor){case'ElementID':return((((_426000_363._0-1)*nTrilinearLocalNodes_82)+(_426001_362._0-1))+1)};_E.Case('Line 426, Column 4')}()};_E.Case('Line 426, Column 4')}()}),refinedNodeToXiCoordinates_88=F2(function(_446000_366,surf_367){return function(){switch(_446000_366.ctor){case'RefinedNodeID':return function(){var rnid0_369=(_446000_366._0-1),col_370=A2(mod,rnid0_369,refineX_73),row_371=A2(div,_446000_366._0,refineX_73);return Xi_72({ctor:"Tuple3",_0:(toFloat(col_370)*(1/toFloat((refineX_73-1)))),_1:(toFloat(row_371)*(1/toFloat((refineY_74-1)))),_2:surfaceToFloat_79(surf_367)})}()};_E.Case('Line 439, Column 3')}()}),cosh_89=function(x_372){return((exp(x_372)+exp((0-x_372)))*0.5)},sinh_90=function(x_373){return((exp(x_373)-exp((0-x_373)))*0.5)},prolateToCartesian_91=F2(function(focalLength_374,_457000_375){return function(){switch(_457000_375.ctor){case'Prolate':return A3(Coord3D_0,((focalLength_374*cosh_89(_457000_375._0.lambda))*cos(_457000_375._0.mu)),(((focalLength_374*sinh_90(_457000_375._0.lambda))*sin(_457000_375._0.mu))*cos(_457000_375._0.theta)),(((focalLength_374*sinh_90(_457000_375._0.lambda))*sin(_457000_375._0.mu))*sin(_457000_375._0.theta)))};_E.Case('Line 456, Column 3')}()}),phaseCorrect_92=function(x_376){return function(){switch(x_376.ctor){case'::':switch(x_376._1.ctor){case'::':return((_N.cmp((x_376._1._0-x_376._0),pi).ctor==='GT')?_L.Cons((x_376._0+(2*pi)),phaseCorrect_92(x_376._1)):_L.Cons(x_376._0,phaseCorrect_92(x_376._1)))};break};return x_376}()},unsafeFind_93=F2(function(f_381,x_382){return function(){switch(x_382.ctor){case'::':return(f_381(x_382._0)?x_382._0:A2(unsafeFind_93,f_381,x_382._1))};_E.Case('Line 466, Column 3')}()}),findMatchingDistribution_94=F3(function(ds_385,bs_386,lvData_387){return function(){var dsName_388=fromString(function(){switch(ds_385.ctor){case'DETERMINE':return _str('DETERMINE');case'MESA':return _str('MESA')};_E.Case('Line 473, Column 28')}()),bsName_389=fromString(function(){switch(bs_386.ctor){case'AverageState':return _str('ED-ES');case'EndDiastole':return _str('ED');case'EndSystole':return _str('ES')};_E.Case('Line 476, Column 28')}());return A2(unsafeFind_93,function(d_390){return(_N.eq(d_390.dataset,dsName_388)&&_N.eq(d_390.biologicalState,bsName_389))},toList(lvData_387.distributions))}()}),lvJSONToModel_95=F4(function(resp_391,modeWeights_392,dataSet_393,biologicalState_394){return function(){switch(resp_391.ctor){case'Just':return function(){var trilinearLookupValue_404=F3(function(values_418,_507001_419,_507000_420){return function(){switch(_507001_419.ctor){case'ElementID':return function(){switch(_507000_420.ctor){case'TrilinearLocalNode':return A2(rawLookup_12,values_418,(((_507001_419._0-1)*nTrilinearLocalNodes_82)+(_507000_420._0-1)))};_E.Case('Line 507, Column 11')}()};_E.Case('Line 507, Column 11')}()}),bicubicLinearLookupValue_405=F3(function(values_423,_510001_424,_510000_425){return function(){switch(_510001_424.ctor){case'ElementID':return function(){switch(_510000_425.ctor){case'BicubicLinearLocalNode':return A2(rawLookup_12,values_423,(((_510001_424._0-1)*nBicubicLinearLocalNodes_81)+(_510000_425._0-1)))};_E.Case('Line 510, Column 11')}()};_E.Case('Line 510, Column 11')}()}),prolateCoords_409=F3(function(elid_428,surf_429,rnid_430){return function(){var xi_431=A2(refinedNodeToXiCoordinates_88,rnid_430,surf_429);return Prolate_71({_:{},lambda:A2(bicubicLinearInterpolate_16,lookupLambdaValue_406(elid_428),xi_431),mu:A2(trilinearInterpolate_15,lookupMuValue_407(elid_428),xi_431),theta:A2(trilinearInterpolate_15,lookupThetaValue_408(elid_428),xi_431)})}()}),rcCoords_410=F3(function(elID_432,surf_433,rnID_434){return A2(prolateToCartesian_91,A2(rawLookup_12,resp_391._0.distributions,0).averages.flength,A3(prolateCoords_409,elID_432,surf_433,rnID_434))}),elementPrims_411=F2(function(elID_435,surf_436){return function(){var nodeAt_438=F2(function(x_439,y_440){return A2(rawLookup_12,narray_437,((y_440*refineX_73)+x_439))}),narray_437=fromList(A2(map,A2(rcCoords_410,elID_435,surf_436),allRefinedNodes_85));return A2(concatMap,function(xlow_441){return A2(concatMap,function(ylow_442){return _J.toList([A3(Triangle_1,A2(nodeAt_438,xlow_441,ylow_442),A2(nodeAt_438,xlow_441,(ylow_442+1)),A2(nodeAt_438,(xlow_441+1),ylow_442)),A3(Triangle_1,A2(nodeAt_438,(xlow_441+1),ylow_442),A2(nodeAt_438,xlow_441,(ylow_442+1)),A2(nodeAt_438,(xlow_441+1),(ylow_442+1)))])},_L.range(0,(refineY_74-2)))},_L.range(0,(refineX_73-2)))}()}),distrib_396=A3(findMatchingDistribution_94,dataSet_393,biologicalState_394,resp_391._0),modes_397=toList(distrib_396.modes),globalLambdas_398=linearCombine_17(_L.Cons({_:{},mup:1.0,values:distrib_396.averages.lambdas},A3(zipWith,function(w_412){return function(m_413){return {_:{},mup:w_412,values:m_413.lambdas}}},modeWeights_392,modes_397))),globalMus_399=linearCombine_17(_L.Cons({_:{},mup:1.0,values:distrib_396.averages.mus},A3(zipWith,function(w_414){return function(m_415){return {_:{},mup:w_414,values:m_415.mus}}},modeWeights_392,modes_397))),globalThetas_400=linearCombine_17(_L.Cons({_:{},mup:1.0,values:distrib_396.averages.thetas},A3(zipWith,function(w_416){return function(m_417){return {_:{},mup:w_416,values:m_417.thetas}}},modeWeights_392,modes_397))),localLambdas_401=A2(linearRemapArray_14,resp_391._0.localToGlobalLambda,globalLambdas_398),localMus_402=A2(simpleRemapArray_13,resp_391._0.localToGlobalMuTheta,globalMus_399),localThetas_403=function(x){return fromList(phaseCorrect_92(toList(x)))}(A2(simpleRemapArray_13,resp_391._0.localToGlobalMuTheta,globalThetas_400)),lookupLambdaValue_406=bicubicLinearLookupValue_405(localLambdas_401),lookupMuValue_407=trilinearLookupValue_404(localMus_402),lookupThetaValue_408=trilinearLookupValue_404(localThetas_403);return GLPrimModel_7({_:{},primitives:A2(concatMap,function(surf_443){return A2(concatMap,function(elID_444){return A2(elementPrims_411,elID_444,surf_443)},allElements_86)},allSurfaces_87)})}();case'Nothing':return placeholderModel_40};_E.Case('Line 485, Column 3')}()}),labelSlider_101=F2(function(idx_449,sliderElem_450){return A2(beside,plainText(_L.append(_str('Mode '),_L.append(show(idx_449),_str(': ')))),sliderElem_450)}),makeSceneView_102=F2(function(primModelValue_451,cameraMatrixValue_452){return function(){var camPerspect_453=A2(multiply4x4_24,myPerspectiveMatrix_43,cameraMatrixValue_452),rotatedDiffuseDirection_454=vec4ToXYZ_20(A2(mat4x4xv_25,mat4ToInverseMat3_28(cameraMatrixValue_452),initialDiffuseDirection_77));return A4(glSceneObject_9,canvasWidth_75,canvasHeight_76,primModelValue_451,GLPrimSceneView_8({_:{},ambientColour:A3(GLColour_2,1,1,1),ambientIntensity:0.4,diffuseColour:A3(GLColour_2,1,1,1),diffuseDirection:rotatedDiffuseDirection_454,diffuseIntensity:0.3,projection:camPerspect_453}))}()}),glSceneObject_9=N.glSceneObject,sendRaw_10=NJSON.send,fastJSON_11=NJSON.fastJSON,rawLookup_12=NJSON.rawLookup,simpleRemapArray_13=NJSON.simpleRemapArray,linearRemapArray_14=NJSON.linearRemapArray,trilinearInterpolate_15=NJSON.trilinearInterpolate,bicubicLinearInterpolate_16=NJSON.bicubicLinearInterpolate,linearCombine_17=NJSON.linearCombine,slider_18=NSLIDE.slider,identity4x4_19=A4(Matrix4x4_4,A4(Vector4_3,1,0,0,0),A4(Vector4_3,0,1,0,0),A4(Vector4_3,0,0,1,0),A4(Vector4_3,0,0,0,1)),lowVal_36=-50,highVal_37=50,lowZ_38=-50,highZ_39=50,placeholderModel_40=function(){var quad_260=F4(function(a_261,b_262,c_263,d_264){return _J.toList([A3(Triangle_1,a_261,b_262,c_263),A3(Triangle_1,a_261,c_263,d_264)])}),clbf_252=A3(Coord3D_0,lowVal_36,lowVal_36,lowZ_38),crbf_253=A3(Coord3D_0,highVal_37,lowVal_36,lowZ_38),cltf_254=A3(Coord3D_0,lowVal_36,highVal_37,lowZ_38),crtf_255=A3(Coord3D_0,highVal_37,highVal_37,lowZ_38),clba_256=A3(Coord3D_0,lowVal_36,lowVal_36,highZ_39),crba_257=A3(Coord3D_0,highVal_37,lowVal_36,highZ_39),clta_258=A3(Coord3D_0,lowVal_36,highVal_37,highZ_39),crta_259=A3(Coord3D_0,highVal_37,highVal_37,highZ_39);return GLPrimModel_7({_:{},primitives:_L.append(A4(quad_260,clbf_252,crbf_253,crtf_255,cltf_254),_L.append(A4(quad_260,clba_256,clbf_252,cltf_254,clta_258),_L.append(A4(quad_260,crbf_253,crba_257,crta_259,crtf_255),_L.append(A4(quad_260,clba_256,clta_258,crta_259,crba_257),_L.append(A4(quad_260,cltf_254,crtf_255,crta_259,clta_258),_L.append(A4(quad_260,crbf_253,clbf_252,clba_256,crba_257),_J.toList([])))))))})}(),myFovRadians_41=(pi/4),myPerspectiveMatrix_43=A4(perspectiveMatrix_42,1.0e-2,1000,1,myFovRadians_41),initialCameraMoveState_49={_:{},cameraModifyMode:CameraRotate_46,cameraQuaternion:A4(Quaternion_6,1,0,0,0),cameraTransformation:A3(Vector3_5,0,0,-200),mainTouch:{_:{},id:0,t0:0,x:0,x0:0,y:0,y0:0},processedPosition:{ctor:"Tuple2",_0:0,_1:0},wasDragging:false},canvasTouches_51=A2(lift,filter(function(t_279){return((_N.cmp(t_279.x,canvasWidth_75).ctor==='LT')&&(_N.cmp(t_279.y,canvasHeight_76).ctor==='LT'))}),Touch.touches),cameraMoveState_52=A3(Signal.foldp,updateCameraMoveState_53,initialCameraMoveState_49,A5(Signal.lift4,function(v0_280){return function(v1_281){return function(v2_282){return function(v3_283){return {ctor:"Tuple4",_0:v0_280,_1:v1_281,_2:v2_282,_3:v3_283}}}}},Keyboard.shift,Keyboard.ctrl,Keyboard.keysDown,canvasTouches_51)),cameraMatrix_54=A2(lift,function(x_344){return A2(multiply4x4_24,vectorToTranslationMatrix_35(x_344.cameraTransformation),quaternionToRotationMatrix_29(x_344.cameraQuaternion))},cameraMoveState_52),refineX_73=6,refineY_74=6,canvasWidth_75=500,canvasHeight_76=500,initialDiffuseDirection_77=A4(Vector4_3,(0-0.3),(0-0.5),(0-0.8),1),lvJSON_78=A2(lift,responseToLVJSON_62,sendRaw_10(constant(Http.get(_str('LV.json'))))),nElements_80=16,nBicubicLinearLocalNodes_81=32,nTrilinearLocalNodes_82=8,allRefinedNodes_85=A2(map,RefinedNodeID_70,_L.range(1,(refineX_73*refineY_74))),allElements_86=A2(map,ElementID_65,_L.range(1,nElements_80)),allSurfaces_87=_J.toList([Endocardial_68,Epicardial_69]),modeWeights_96=A2(map,function(__445){return A6(slider_18,canvasWidth_75,8,(0-2.0),2.0,1.0e-2,0.0)},_L.range(1,6)),selectDataset_97=dropDown(_J.toList([{ctor:"Tuple2",_0:_str('DETERMINE (diseased hearts)'),_1:DETERMINE_55},{ctor:"Tuple2",_0:_str('MESA (healthy hearts)'),_1:MESA_56}])),selectBiologicalState_98=dropDown(_J.toList([{ctor:"Tuple2",_0:_str('End systole'),_1:EndSystole_58},{ctor:"Tuple2",_0:_str('End diastole'),_1:EndDiastole_57},{ctor:"Tuple2",_0:_str('Average'),_1:AverageState_59}])),primModel_99=A3(lift2,F2(function(f,x){return f(x)}),A3(lift2,F2(function(f,x){return f(x)}),A3(lift2,F2(function(f,x){return f(x)}),A2(lift,lvJSONToModel_95,lvJSON_78),combine(A2(map,snd,modeWeights_96))),snd(selectDataset_97)),snd(selectBiologicalState_98)),main_100=A2(lift,flow(down),combine(_L.Cons(A3(lift2,F2(function(f,x){return f(x)}),A2(lift,makeSceneView_102,primModel_99),cameraMatrix_54),_L.append(A2(map,function(_0_446){return function(){switch(_0_446.ctor){case'Tuple2':switch(_0_446._1.ctor){case'Tuple2':return A2(lift,labelSlider_101(_0_446._0),_0_446._1._0)};break};_E.Case('Line 570, Column 60')}()},A2(zip,_L.range(1,6),modeWeights_96)),_J.toList([constant(A2(spacer,1,80)),A2(lift,flow(right),combine(_J.toList([constant(A2(spacer,50,1)),fst(selectDataset_97),constant(A2(spacer,10,1)),fst(selectBiologicalState_98)])))])))));elm.Native=elm.Native||{};var _=elm.Native.Main||{};_.$op={};_.Coord3D=Coord3D_0;_.Triangle=Triangle_1;_.GLColour=GLColour_2;_.Vector4=Vector4_3;_.Matrix4x4=Matrix4x4_4;_.Vector3=Vector3_5;_.Quaternion=Quaternion_6;_.GLPrimModel=GLPrimModel_7;_.GLPrimSceneView=GLPrimSceneView_8;_.glSceneObject=glSceneObject_9;_.sendRaw=sendRaw_10;_.fastJSON=fastJSON_11;_.rawLookup=rawLookup_12;_.simpleRemapArray=simpleRemapArray_13;_.linearRemapArray=linearRemapArray_14;_.trilinearInterpolate=trilinearInterpolate_15;_.bicubicLinearInterpolate=bicubicLinearInterpolate_16;_.linearCombine=linearCombine_17;_.slider=slider_18;_.identity4x4=identity4x4_19;_.vec4ToXYZ=vec4ToXYZ_20;_.matrix4x4Row=matrix4x4Row_21;_.matrix4x4Column=matrix4x4Column_22;_.dotProduct=dotProduct_23;_.multiply4x4=multiply4x4_24;_.mat4x4xv=mat4x4xv_25;_.transpose4x4=transpose4x4_26;_.norm4=norm4_27;_.mat4ToInverseMat3=mat4ToInverseMat3_28;_.quaternionToRotationMatrix=quaternionToRotationMatrix_29;_.normaliseQuaternion=normaliseQuaternion_30;_.multiplyQuaternion=multiplyQuaternion_31;_.conjugateQuaternion=conjugateQuaternion_32;_.rotateVectorByQuaternion=rotateVectorByQuaternion_33;_.eulerToQuaternion=eulerToQuaternion_34;_.vectorToTranslationMatrix=vectorToTranslationMatrix_35;_.lowVal=lowVal_36;_.highVal=highVal_37;_.lowZ=lowZ_38;_.highZ=highZ_39;_.placeholderModel=placeholderModel_40;_.myFovRadians=myFovRadians_41;_.perspectiveMatrix=perspectiveMatrix_42;_.myPerspectiveMatrix=myPerspectiveMatrix_43;_.TranslateXY=TranslateXY_44;_.TranslateXZ=TranslateXZ_45;_.CameraRotate=CameraRotate_46;_.CameraTranslate=CameraTranslate_47;_.CameraMoveState=CameraMoveState_48;_.initialCameraMoveState=initialCameraMoveState_49;_.keyboardAlt=keyboardAlt_50;_.canvasTouches=canvasTouches_51;_.cameraMoveState=cameraMoveState_52;_.updateCameraMoveState=updateCameraMoveState_53;_.cameraMatrix=cameraMatrix_54;_.DETERMINE=DETERMINE_55;_.MESA=MESA_56;_.EndDiastole=EndDiastole_57;_.EndSystole=EndSystole_58;_.AverageState=AverageState_59;_.LVDistrib=LVDistrib_60;_.LVJSON=LVJSON_61;_.responseToLVJSON=responseToLVJSON_62;_.GlobalMuLambda=GlobalMuLambda_63;_.GlobalTheta=GlobalTheta_64;_.ElementID=ElementID_65;_.BicubicLinearLocalNode=BicubicLinearLocalNode_66;_.TrilinearLocalNode=TrilinearLocalNode_67;_.Endocardial=Endocardial_68;_.Epicardial=Epicardial_69;_.RefinedNodeID=RefinedNodeID_70;_.Prolate=Prolate_71;_.Xi=Xi_72;_.refineX=refineX_73;_.refineY=refineY_74;_.canvasWidth=canvasWidth_75;_.canvasHeight=canvasHeight_76;_.initialDiffuseDirection=initialDiffuseDirection_77;_.lvJSON=lvJSON_78;_.surfaceToFloat=surfaceToFloat_79;_.nElements=nElements_80;_.nBicubicLinearLocalNodes=nBicubicLinearLocalNodes_81;_.nTrilinearLocalNodes=nTrilinearLocalNodes_82;_.localNodeIndexBicubicLinear=localNodeIndexBicubicLinear_83;_.localNodeIndexTrilinear=localNodeIndexTrilinear_84;_.allRefinedNodes=allRefinedNodes_85;_.allElements=allElements_86;_.allSurfaces=allSurfaces_87;_.refinedNodeToXiCoordinates=refinedNodeToXiCoordinates_88;_.cosh=cosh_89;_.sinh=sinh_90;_.prolateToCartesian=prolateToCartesian_91;_.phaseCorrect=phaseCorrect_92;_.unsafeFind=unsafeFind_93;_.findMatchingDistribution=findMatchingDistribution_94;_.lvJSONToModel=lvJSONToModel_95;_.modeWeights=modeWeights_96;_.selectDataset=selectDataset_97;_.selectBiologicalState=selectBiologicalState_98;_.primModel=primModel_99;_.main=main_100;_.labelSlider=labelSlider_101;_.makeSceneView=makeSceneView_102;return elm.Main=_}</script></head><body><script type="text/javascript">Elm.fullscreen(Elm.Main)</script><noscript></noscript></body></html>
+                         }"
+
+    var newElement = Elm.Graphics.Element(elm).newElement;
+    function renderGLScene(model) {
+        var jscanvas = document.createElement("canvas");
+        jscanvas.width = model.w;
+        jscanvas.height = model.h;
+
+        newContext(jscanvas);
+        updateGLScene(jscanvas, {w:0,h:0, model: null, projection: null }, model);
+        return jscanvas;
+    }
+
+    function newContext(jscanvas) {
+        var ctx = jscanvas.getContext("webgl") || jscanvas.getContext("experimental-webgl");
+        ctx.viewport(0, 0, 500, 500);
+        var shaderProgram = ctx.createProgram();
+
+        ctx.enable(ctx.DEPTH_TEST);
+
+        var vertShad = ctx.createShader(ctx.VERTEX_SHADER);
+        ctx.shaderSource(vertShad, vertexShader);
+        ctx.compileShader(vertShad);
+        ctx.attachShader(shaderProgram, vertShad);
+
+        var fragShad = ctx.createShader(ctx.FRAGMENT_SHADER);
+        ctx.shaderSource(fragShad, fragmentShader);
+        ctx.compileShader(fragShad);
+        ctx.attachShader(shaderProgram, fragShad);
+
+        ctx.linkProgram(shaderProgram);
+        ctx.useProgram(shaderProgram);
+
+        var shadeData = { aPos: ctx.getAttribLocation(shaderProgram, "aPos"),
+                          aNormal: ctx.getAttribLocation(shaderProgram, "aNormal"),
+                          aProjection: ctx.getUniformLocation(shaderProgram, "aProjection"),
+                          aAmbientColour: ctx.getUniformLocation(shaderProgram, "aAmbientColour"),
+                          aAmbientIntensity: ctx.getUniformLocation(shaderProgram, "aAmbientIntensity"),
+                          aDiffuse1Colour: ctx.getUniformLocation(shaderProgram, "aDiffuse1Colour"),
+                          aDiffuse1Direction: ctx.getUniformLocation(shaderProgram, "aDiffuse1Direction"),
+                          aDiffuse1Intensity: ctx.getUniformLocation(shaderProgram, "aDiffuse1Intensity")
+                        };
+
+        ctx.enableVertexAttribArray(shadeData.aPos);
+        ctx.enableVertexAttribArray(shadeData.aNormal);
+
+        jscanvas.shadeData = shadeData;
+        jscanvas.ctx = ctx;
+        return ctx;
+    }
+    
+    function updateGLScene(jscanvas, curr, next) {
+        jscanvas.width = next.w;
+        jscanvas.height = next.h;
+        if (jscanvas.ctx == null)
+            return;
+        jscanvas.ctx.viewport(0, 0, next.w,
+                              next.h);
+
+        var modelChanged = next.model != curr.model;
+        var sceneChanged = next.sceneview != curr.sceneview;
+        
+        if (modelChanged || sceneChanged) {
+            jscanvas.ctx.clearColor(0.0, 0.0, 0.0, 1.0);
+            jscanvas.ctx.clearDepth(65535);
+            jscanvas.ctx.depthFunc(jscanvas.ctx.LESS);
+            jscanvas.ctx.clear(jscanvas.ctx.COLOR_BUFFER_BIT |
+                               jscanvas.ctx.DEPTH_BUFFER_BIT);
+        }
+
+        var jsmodel = next.model._0;
+
+        if (modelChanged) {
+            var jsprims = JS.fromList(jsmodel.primitives);
+            jscanvas.nNodes = jsprims.length * 3;
+            var nodalPos = new Float32Array(3 * jscanvas.nNodes);
+            var normals = new Float32Array(3 * jscanvas.nNodes);
+            for (var primID in jsprims) {
+                var thisPrim = jsprims[primID];
+                nodalPos.set([thisPrim._0._0, thisPrim._0._1, thisPrim._0._2,
+                              thisPrim._1._0, thisPrim._1._1, thisPrim._1._2,
+                              thisPrim._2._0, thisPrim._2._1, thisPrim._2._2,
+                             ], 9*primID);
+                // Compute the normal vector between edges 01 and 02 (we
+                // use an anticlockwise winding).
+                var ux = thisPrim._1._0 - thisPrim._0._0,
+                    uy = thisPrim._1._1 - thisPrim._0._1,
+                    uz = thisPrim._1._2 - thisPrim._0._2,
+                    vx = thisPrim._2._0 - thisPrim._0._0,
+                    vy = thisPrim._2._1 - thisPrim._0._1,
+                    vz = thisPrim._2._2 - thisPrim._0._2,
+                    Nx = uy * vz - uz * vy,
+                    Ny = uz * vx - ux * vz,
+                    Nz = ux * vy - uy * vx;
+                // Send the non-normalised normal vector to the shader.
+                normals.set([Nx, Ny, Nz, Nx, Ny, Nz, Nx, Ny, Nz], 9 * primID);
+            }
+
+            jscanvas.ctx.bindBuffer(jscanvas.ctx.ARRAY_BUFFER, jscanvas.ctx.createBuffer());
+            jscanvas.ctx.bufferData(jscanvas.ctx.ARRAY_BUFFER, nodalPos, jscanvas.ctx.STATIC_DRAW);
+            jscanvas.ctx.vertexAttribPointer(jscanvas.shadeData.aPos, 3, jscanvas.ctx.FLOAT, false, 0, 0);
+
+            jscanvas.ctx.bindBuffer(jscanvas.ctx.ARRAY_BUFFER, jscanvas.ctx.createBuffer());
+            jscanvas.ctx.bufferData(jscanvas.ctx.ARRAY_BUFFER, normals, jscanvas.ctx.STATIC_DRAW);
+            jscanvas.ctx.vertexAttribPointer(jscanvas.shadeData.aNormal, 3, jscanvas.ctx.FLOAT, false, 0, 0);
+        }
+
+        if (sceneChanged) {
+            var sv = next.sceneview._0;
+            jscanvas.ctx.uniformMatrix4fv(jscanvas.shadeData.aProjection, false,
+                                          [sv.projection._0._0, sv.projection._1._0, sv.projection._2._0, sv.projection._3._0,
+                                           sv.projection._0._1, sv.projection._1._1, sv.projection._2._1, sv.projection._3._1,
+                                           sv.projection._0._2, sv.projection._1._2, sv.projection._2._2, sv.projection._3._2,
+                                           sv.projection._0._3, sv.projection._1._3, sv.projection._2._3, sv.projection._3._3
+                                          ]);
+            jscanvas.ctx.uniform1f(jscanvas.shadeData.aAmbientIntensity, sv.ambientIntensity);
+            jscanvas.ctx.uniform1f(jscanvas.shadeData.aDiffuse1Intensity, sv.diffuseIntensity);
+            jscanvas.ctx.uniform3f(jscanvas.shadeData.aAmbientColour, sv.ambientColour._0,
+                                   sv.ambientColour._1, sv.ambientColour._2);
+            jscanvas.ctx.uniform3f(jscanvas.shadeData.aDiffuse1Colour, sv.diffuseColour._0,
+                                   sv.diffuseColour._1, sv.diffuseColour._2);
+            jscanvas.ctx.uniform3f(jscanvas.shadeData.aDiffuse1Direction, sv.diffuseDirection._0,
+                                   sv.diffuseDirection._1, sv.diffuseDirection._2);
+        }
+
+        if (modelChanged || sceneChanged) {
+            jscanvas.ctx.drawArrays(jscanvas.ctx.TRIANGLES, 0, jscanvas.nNodes);
+            jscanvas.ctx.flush();
+        }
+
+        return false;
+    }
+
+    function glSceneObject(w, h, model, sceneview) {
+        return A3(newElement, w, h, {
+            ctor: 'Custom',
+	    type: 'WebGL',
+	    render: renderGLScene,
+	    update: updateGLScene,
+            props: {},
+	    model: {w:w, h:h, model: model, sceneview: sceneview }
+	});
+    }
+    return elm.Native.Graphics.WebGLScene = { glSceneObject: F4(glSceneObject) };
+};
+
+Elm.Main = function(elm){
+  var N = Elm.Native, _N = N.Utils(elm), _L = N.List(elm), _E = N.Error(elm), _J = N.JavaScript(elm), _str = _J.toString;
+  var $op = {};
+  var _ = Elm.Text(elm); var Text = _; var hiding={link:1, color:1, height:1}; for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')}
+  var _ = Elm.Prelude(elm); var Prelude = _; var hiding={}; for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')}
+  var _ = Elm.Signal(elm); var Signal = _; var hiding={}; for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')}
+  var _ = Elm.List(elm); var List = _; var hiding={}; for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')}
+  var _ = Elm.Maybe(elm); var Maybe = _; var hiding={}; for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')}
+  var _ = Elm.Time(elm); var Time = _; var hiding={}; for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')}
+  var _ = Elm.Graphics.Element(elm); var Graphics = Graphics||{};Graphics.Element = _; var hiding={}; for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')}
+  var _ = Elm.Color(elm); var Color = _; var hiding={}; for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')}
+  var _ = Elm.Graphics.Collage(elm); var Graphics = Graphics||{};Graphics.Collage = _; var hiding={}; for(var k in _){if(k in hiding)continue;eval('var '+k+'=_["'+k+'"]')}
+  var N = Elm.Native.Graphics.WebGLScene(elm);
+  var NJSON = Elm.Native.FastJSON(elm);
+  var _ = Elm.Dict(elm); var Dict = _;
+  var _ = Elm.Mouse(elm); var Mouse = _;
+  var _ = Elm.Keyboard(elm); var Keyboard = _;
+  var _ = Elm.Touch(elm); var Touch = _;
+  var _ = Elm.Http(elm); var Http = _;
+  var Success = _.Success, Waiting = _.Waiting, Failure = _.Failure;
+  var _ = Elm.Json(elm); var Json = _;
+  var _ = Elm.JavaScript.Experimental(elm); var JavaScript = JavaScript||{};JavaScript.Experimental = _;
+  var _ = Elm.Graphics.Input(elm); var Graphics = Graphics||{};Graphics.Input = _;
+  var dropDown = _.dropDown;
+  var _ = Elm.JavaScript(elm); var JavaScript = _;
+  var fromList = _.fromList, toList = _.toList, fromString = _.fromString, toString = _.toString;
+  var _ = Elm.Native.JQuery(elm); var Native = Native||{};Native.JQuery = _;
+  var NSLIDE = Elm.Native.Graphics.Slider(elm);
+  var NDYNINP = Elm.Native.Graphics.DynamicInput(elm);
+  var Coord3D_0 = F3(function(a1, a2, a3){
+    return {ctor:"Coord3D", _0:a1, _1:a2, _2:a3};});
+  var Triangle_1 = F3(function(a1, a2, a3){
+    return {ctor:"Triangle", _0:a1, _1:a2, _2:a3};});
+  var GLColour_2 = F3(function(a1, a2, a3){
+    return {ctor:"GLColour", _0:a1, _1:a2, _2:a3};});
+  var Vector4_3 = F4(function(a1, a2, a3, a4){
+    return {ctor:"Vector4", _0:a1, _1:a2, _2:a3, _3:a4};});
+  var Matrix4x4_4 = F4(function(a1, a2, a3, a4){
+    return {ctor:"Matrix4x4", _0:a1, _1:a2, _2:a3, _3:a4};});
+  var Vector3_5 = F3(function(a1, a2, a3){
+    return {ctor:"Vector3", _0:a1, _1:a2, _2:a3};});
+  var Quaternion_6 = F4(function(a1, a2, a3, a4){
+    return {ctor:"Quaternion", _0:a1, _1:a2, _2:a3, _3:a4};});
+  var GLPrimModel_7 = function(a1){
+    return {ctor:"GLPrimModel", _0:a1};};
+  var GLPrimSceneView_8 = function(a1){
+    return {ctor:"GLPrimSceneView", _0:a1};};
+  var DynamicDropdown_19 = {ctor:"DynamicDropdown"};
+  var TranslateXY_47 = {ctor:"TranslateXY"};
+  var TranslateXZ_48 = {ctor:"TranslateXZ"};
+  var CameraRotate_49 = {ctor:"CameraRotate"};
+  var CameraTranslate_50 = function(a1){
+    return {ctor:"CameraTranslate", _0:a1};};
+  var Dataset_58 = function(a1){
+    return {ctor:"Dataset", _0:a1};};
+  var BiologicalState_59 = function(a1){
+    return {ctor:"BiologicalState", _0:a1};};
+  var GlobalMuLambda_63 = function(a1){
+    return {ctor:"GlobalMuLambda", _0:a1};};
+  var GlobalTheta_64 = function(a1){
+    return {ctor:"GlobalTheta", _0:a1};};
+  var ElementID_65 = function(a1){
+    return {ctor:"ElementID", _0:a1};};
+  var BicubicLinearLocalNode_66 = function(a1){
+    return {ctor:"BicubicLinearLocalNode", _0:a1};};
+  var TrilinearLocalNode_67 = function(a1){
+    return {ctor:"TrilinearLocalNode", _0:a1};};
+  var Inner_68 = {ctor:"Inner"};
+  var Outer_69 = {ctor:"Outer"};
+  var RefinedNodeID_70 = function(a1){
+    return {ctor:"RefinedNodeID", _0:a1};};
+  var Prolate_71 = function(a1){
+    return {ctor:"Prolate", _0:a1};};
+  var Xi_72 = function(a1){
+    return {ctor:"Xi", _0:a1};};
+  var vec4ToXYZ_23 = function(_94000_111){
+    return function(){ 
+    switch (_94000_111.ctor) {
+      case 'Vector4':
+        return A3(Vector3_5, _94000_111._0, _94000_111._1, _94000_111._2);
+    }_E.Case('Line 94, Column 31') }();};
+  var matrix4x4Row_24 = F2(function(row_115, _102000_116){
+    return function(){ 
+    switch (_102000_116.ctor) {
+      case 'Matrix4x4':
+        return function(){ 
+        switch (row_115) {
+          case 0:
+            return _102000_116._0;
+          case 1:
+            return _102000_116._1;
+          case 2:
+            return _102000_116._2;
+          case 3:
+            return _102000_116._3;
+        }_E.Case('Line 98, Column 3') }();
+    }_E.Case('Line 98, Column 3') }();});
+  var matrix4x4Column_25 = F2(function(row_121, _113000_122){
+    return function(){ 
+    switch (_113000_122.ctor) {
+      case 'Matrix4x4':
+        switch (_113000_122._0.ctor) {
+          case 'Vector4':
+            switch (_113000_122._1.ctor) {
+              case 'Vector4':
+                switch (_113000_122._2.ctor) {
+                  case 'Vector4':
+                    switch (_113000_122._3.ctor) {
+                      case 'Vector4':
+                        return function(){ 
+                        switch (row_121) {
+                          case 0:
+                            return A4(Vector4_3, _113000_122._0._0, _113000_122._1._0, _113000_122._2._0, _113000_122._3._0);
+                          case 1:
+                            return A4(Vector4_3, _113000_122._0._1, _113000_122._1._1, _113000_122._2._1, _113000_122._3._1);
+                          case 2:
+                            return A4(Vector4_3, _113000_122._0._2, _113000_122._1._2, _113000_122._2._2, _113000_122._3._2);
+                          case 3:
+                            return A4(Vector4_3, _113000_122._0._3, _113000_122._1._3, _113000_122._2._3, _113000_122._3._3);
+                        }_E.Case('Line 109, Column 3') }();
+                    }break;
+                }break;
+            }break;
+        }break;
+    }_E.Case('Line 109, Column 3') }();});
+  var dotProduct_26 = F2(function(_117001_139, _117000_140){
+    return function(){ 
+    switch (_117001_139.ctor) {
+      case 'Vector4':
+        return function(){ 
+        switch (_117000_140.ctor) {
+          case 'Vector4':
+            return ((((_117001_139._0*_117000_140._0)+(_117001_139._1*_117000_140._1))+(_117001_139._2*_117000_140._2))+(_117001_139._3*_117000_140._3));
+        }_E.Case('Line 117, Column 4') }();
+    }_E.Case('Line 117, Column 4') }();});
+  var multiply4x4_27 = F2(function(m1_149, m2_150){
+    return function(){
+      var p_151 = F2(function(r_152, c_153){
+        return A2(dotProduct_26, A2(matrix4x4Row_24, r_152, m1_149), A2(matrix4x4Column_25, c_153, m2_150));});
+      return A4(Matrix4x4_4, A4(Vector4_3, A2(p_151, 0, 0), A2(p_151, 0, 1), A2(p_151, 0, 2), A2(p_151, 0, 3)), A4(Vector4_3, A2(p_151, 1, 0), A2(p_151, 1, 1), A2(p_151, 1, 2), A2(p_151, 1, 3)), A4(Vector4_3, A2(p_151, 2, 0), A2(p_151, 2, 1), A2(p_151, 2, 2), A2(p_151, 2, 3)), A4(Vector4_3, A2(p_151, 3, 0), A2(p_151, 3, 1), A2(p_151, 3, 2), A2(p_151, 3, 3)));}();});
+  var mat4x4xv_28 = F2(function(m_154, v_155){
+    return A4(Vector4_3, A2(dotProduct_26, A2(matrix4x4Row_24, 0, m_154), v_155), A2(dotProduct_26, A2(matrix4x4Row_24, 1, m_154), v_155), A2(dotProduct_26, A2(matrix4x4Row_24, 2, m_154), v_155), A2(dotProduct_26, A2(matrix4x4Row_24, 3, m_154), v_155));});
+  var transpose4x4_29 = function(_144000_156){
+    return function(){ 
+    switch (_144000_156.ctor) {
+      case 'Matrix4x4':
+        switch (_144000_156._0.ctor) {
+          case 'Vector4':
+            switch (_144000_156._1.ctor) {
+              case 'Vector4':
+                switch (_144000_156._2.ctor) {
+                  case 'Vector4':
+                    switch (_144000_156._3.ctor) {
+                      case 'Vector4':
+                        return A4(Matrix4x4_4, A4(Vector4_3, _144000_156._0._0, _144000_156._1._0, _144000_156._2._0, _144000_156._3._0), A4(Vector4_3, _144000_156._0._1, _144000_156._1._1, _144000_156._2._1, _144000_156._3._1), A4(Vector4_3, _144000_156._0._2, _144000_156._1._2, _144000_156._2._2, _144000_156._3._2), A4(Vector4_3, _144000_156._0._3, _144000_156._1._3, _144000_156._2._3, _144000_156._3._3));
+                    }break;
+                }break;
+            }break;
+        }break;
+    }_E.Case('Line 141, Column 3') }();};
+  var norm4_30 = function(_147000_173){
+    return function(){ 
+    switch (_147000_173.ctor) {
+      case 'Vector4':
+        return A3(Vector3_5, (_147000_173._0/_147000_173._3), (_147000_173._1/_147000_173._3), (_147000_173._2/_147000_173._3));
+    }_E.Case('Line 147, Column 31') }();};
+  var mat4ToInverseMat3_31 = function(_167000_178){
+    return function(){ 
+    switch (_167000_178.ctor) {
+      case 'Matrix4x4':
+        switch (_167000_178._0.ctor) {
+          case 'Vector4':
+            switch (_167000_178._1.ctor) {
+              case 'Vector4':
+                switch (_167000_178._2.ctor) {
+                  case 'Vector4':
+                    switch (_167000_178._3.ctor) {
+                      case 'Vector4':
+                        return function(){
+                          var b12_195 = ((_167000_178._2._2*_167000_178._1._1)-(_167000_178._1._2*_167000_178._2._1));
+                          var b22_196 = ((_167000_178._1._2*_167000_178._2._0)-(_167000_178._2._2*_167000_178._1._0));
+                          var b32_197 = ((_167000_178._2._1*_167000_178._1._0)-(_167000_178._1._1*_167000_178._2._0));
+                          var det_198 = (((_167000_178._0._0*b12_195)+(_167000_178._0._1*b22_196))+(_167000_178._0._2*b32_197));
+                          var invDet_199 = (_N.eq(det_198,0) ? 0 : (1/det_198));
+                          return A4(Matrix4x4_4, A4(Vector4_3, (b12_195*invDet_199), (((_167000_178._0._2*_167000_178._2._1)-(_167000_178._2._2*_167000_178._0._1))*invDet_199), (((_167000_178._1._2*_167000_178._0._1)-(_167000_178._0._2*_167000_178._1._1))*invDet_199), 0), A4(Vector4_3, (b22_196*invDet_199), (((_167000_178._2._2*_167000_178._0._0)-(_167000_178._0._2*_167000_178._2._0))*invDet_199), (((_167000_178._0._2*_167000_178._1._0)-(_167000_178._1._2*_167000_178._0._0))*invDet_199), 0), A4(Vector4_3, (b32_197*invDet_199), (((_167000_178._0._1*_167000_178._2._0)-(_167000_178._2._1*_167000_178._0._0))*invDet_199), (((_167000_178._1._1*_167000_178._0._0)-(_167000_178._0._1*_167000_178._1._0))*invDet_199), 0), A4(Vector4_3, 0, 0, 0, 1));}();
+                    }break;
+                }break;
+            }break;
+        }break;
+    }_E.Case('Line 156, Column 3') }();};
+  var quaternionToRotationMatrix_32 = function(_173000_200){
+    return function(){ 
+    switch (_173000_200.ctor) {
+      case 'Quaternion':
+        return A4(Matrix4x4_4, A4(Vector4_3, (1-(2*((_173000_200._2*_173000_200._2)+(_173000_200._3*_173000_200._3)))), (2*((_173000_200._1*_173000_200._2)+(_173000_200._0*_173000_200._3))), (2*((_173000_200._1*_173000_200._3)-(_173000_200._0*_173000_200._2))), 0), A4(Vector4_3, (2*((_173000_200._1*_173000_200._2)-(_173000_200._0*_173000_200._3))), (1-(2*((_173000_200._1*_173000_200._1)+(_173000_200._3*_173000_200._3)))), (2*((_173000_200._2*_173000_200._3)+(_173000_200._0*_173000_200._1))), 0), A4(Vector4_3, (2*((_173000_200._1*_173000_200._3)+(_173000_200._0*_173000_200._2))), (2*((_173000_200._2*_173000_200._3)-(_173000_200._0*_173000_200._1))), (1-(2*((_173000_200._1*_173000_200._1)+(_173000_200._2*_173000_200._2)))), 0), A4(Vector4_3, 0, 0, 0, 1));
+    }_E.Case('Line 170, Column 3') }();};
+  var normaliseQuaternion_33 = function(_179000_205){
+    return function(){ 
+    switch (_179000_205.ctor) {
+      case 'Quaternion':
+        return function(){
+          var norm_210 = sqrt(((((_179000_205._0*_179000_205._0)+(_179000_205._1*_179000_205._1))+(_179000_205._2*_179000_205._2))+(_179000_205._3*_179000_205._3)));
+          return A4(Quaternion_6, (_179000_205._0/norm_210), (_179000_205._1/norm_210), (_179000_205._2/norm_210), (_179000_205._3/norm_210));}();
+    }_E.Case('Line 176, Column 3') }();};
+  var multiplyQuaternion_34 = F2(function(_185001_211, _185000_212){
+    return function(){ 
+    switch (_185001_211.ctor) {
+      case 'Quaternion':
+        return function(){ 
+        switch (_185000_212.ctor) {
+          case 'Quaternion':
+            return A4(Quaternion_6, ((((_185001_211._0*_185000_212._0)-(_185001_211._1*_185000_212._1))-(_185001_211._2*_185000_212._2))-(_185001_211._3*_185000_212._3)), ((((_185001_211._2*_185000_212._3)-(_185001_211._3*_185000_212._2))+(_185001_211._0*_185000_212._1))+(_185000_212._0*_185001_211._1)), ((((_185001_211._3*_185000_212._1)-(_185001_211._1*_185000_212._3))+(_185001_211._0*_185000_212._2))+(_185000_212._0*_185001_211._2)), ((((_185001_211._1*_185000_212._2)-(_185001_211._2*_185000_212._1))+(_185001_211._0*_185000_212._3))+(_185001_211._3*_185000_212._0)));
+        }_E.Case('Line 182, Column 3') }();
+    }_E.Case('Line 182, Column 3') }();});
+  var conjugateQuaternion_35 = function(_186000_221){
+    return function(){ 
+    switch (_186000_221.ctor) {
+      case 'Quaternion':
+        return A4(Quaternion_6, _186000_221._0, (0-_186000_221._1), (0-_186000_221._2), (0-_186000_221._3));
+    }_E.Case('Line 186, Column 44') }();};
+  var rotateVectorByQuaternion_36 = F2(function(q_226, _194000_227){
+    return function(){ 
+    switch (_194000_227.ctor) {
+      case 'Vector3':
+        return function(){
+          var _192000_231 = A2(multiplyQuaternion_34, q_226, A2(multiplyQuaternion_34, A4(Quaternion_6, 0, _194000_227._0, _194000_227._1, _194000_227._2), conjugateQuaternion_35(q_226)));
+          var x$_232 = function(){ 
+          switch (_192000_231.ctor) {
+            case 'Quaternion':
+              return _192000_231._1;
+          }_E.Case('Line 192, Column 7') }();
+          var y$_233 = function(){ 
+          switch (_192000_231.ctor) {
+            case 'Quaternion':
+              return _192000_231._2;
+          }_E.Case('Line 192, Column 7') }();
+          var z$_234 = function(){ 
+          switch (_192000_231.ctor) {
+            case 'Quaternion':
+              return _192000_231._3;
+          }_E.Case('Line 192, Column 7') }();
+          return A3(Vector3_5, x$_232, y$_233, z$_234);}();
+    }_E.Case('Line 190, Column 3') }();});
+  var eulerToQuaternion_37 = F3(function(theta_244, phi_245, psi_246){
+    return function(){
+      var theta2_247 = (theta_244/2);
+      var phi2_248 = (phi_245/2);
+      var psi2_249 = (psi_246/2);
+      var costheta2_250 = cos(theta2_247);
+      var sintheta2_251 = sin(theta2_247);
+      var cosphi2_252 = cos(phi2_248);
+      var sinphi2_253 = sin(phi2_248);
+      var cospsi2_254 = cos(psi2_249);
+      var sinpsi2_255 = sin(psi2_249);
+      return A4(Quaternion_6, (((cospsi2_254*costheta2_250)*cosphi2_252)+((sinpsi2_255*costheta2_250)*cosphi2_252)), (((sinpsi2_255*costheta2_250)*cosphi2_252)-((cospsi2_254*sintheta2_251)*sinphi2_253)), (((cospsi2_254*sintheta2_251)*cosphi2_252)+((sinpsi2_255*costheta2_250)*sinphi2_253)), (((cospsi2_254*costheta2_250)*sinphi2_253)-((sinpsi2_255*sintheta2_251)*cosphi2_252)));}();});
+  var vectorToTranslationMatrix_38 = function(_217000_256){
+    return function(){ 
+    switch (_217000_256.ctor) {
+      case 'Vector3':
+        return A4(Matrix4x4_4, A4(Vector4_3, 1, 0, 0, _217000_256._0), A4(Vector4_3, 0, 1, 0, _217000_256._1), A4(Vector4_3, 0, 0, 1, _217000_256._2), A4(Vector4_3, 0, 0, 0, 1));
+    }_E.Case('Line 214, Column 3') }();};
+  var perspectiveMatrix_45 = F4(function(near_273, far_274, aspectRatio_275, fovRadians_276){
+    return function(){
+      var f_277 = (1.0/tan((fovRadians_276/2)));
+      var nf_278 = (1/(near_273-far_274));
+      return A4(Matrix4x4_4, A4(Vector4_3, (f_277/aspectRatio_275), 0, 0, 0), A4(Vector4_3, 0, f_277, 0, 0), A4(Vector4_3, 0, 0, ((far_274+near_273)*nf_278), (((2*far_274)*near_273)*nf_278)), A4(Vector4_3, 0, 0, -1, 0));}();});
+  var CameraMoveState_51 = F6(function(cameraQuaternion_279, cameraTransformation_280, processedPosition_281, mainTouch_282, wasDragging_283, cameraModifyMode_284){
+    return {
+      _:{
+      },
+      cameraModifyMode:cameraModifyMode_284,
+      cameraQuaternion:cameraQuaternion_279,
+      cameraTransformation:cameraTransformation_280,
+      mainTouch:mainTouch_282,
+      processedPosition:processedPosition_281,
+      wasDragging:wasDragging_283};});
+  var keyboardAlt_53 = function(keysDown_285){
+    return A2(any, function(x_286){
+      return _N.eq(x_286,18);}, keysDown_285);};
+  var updateCameraMoveState_56 = F2(function(_350000_292, oldMoveState_293){
+    return function(){ 
+    switch (_350000_292.ctor) {
+      case 'Tuple4':
+        return function(){
+          var dragging_298 = (_N.cmp(length(_350000_292._3),0).ctor==='GT');
+          return (not(dragging_298) ? _N.replace([['wasDragging',false]], oldMoveState_293) : function(){
+            var newCameraModifyMode_299 = ((_350000_292._0||_N.eq(length(_350000_292._3),2)) ? CameraTranslate_50(TranslateXY_47) : ((_350000_292._1||(keyboardAlt_53(_350000_292._2)||(_N.cmp(length(_350000_292._3),2).ctor==='GT'))) ? CameraTranslate_50(TranslateXZ_48) : CameraRotate_49));
+            return (not(oldMoveState_293.wasDragging) ? function(){
+              var pointer_300 = head(_350000_292._3);
+              return _N.replace([['wasDragging',true],['processedPosition',{ctor:"Tuple2", _0:pointer_300.x, _1:pointer_300.y}],['mainTouch',head(_350000_292._3)],['cameraModifyMode',newCameraModifyMode_299]], oldMoveState_293);}() : function(){
+              var previousPointCatcher_301 = A2(filter, function(t_306){
+                return _N.eq(t_306.id,oldMoveState_293.mainTouch.id);}, _350000_292._3);
+              var pointer_302 = ((_N.cmp(length(previousPointCatcher_301),0).ctor==='GT') ? head(previousPointCatcher_301) : head(_350000_292._3));
+              var _313000_303 = oldMoveState_293.processedPosition;
+              var lastX_304 = function(){ 
+              switch (_313000_303.ctor) {
+                case 'Tuple2':
+                  return _313000_303._0;
+              }_E.Case('Line 313, Column 34') }();
+              var lastY_305 = function(){ 
+              switch (_313000_303.ctor) {
+                case 'Tuple2':
+                  return _313000_303._1;
+              }_E.Case('Line 313, Column 34') }();
+              return function(){ 
+              var case149 = oldMoveState_293.cameraModifyMode;
+              switch (case149.ctor) {
+                case 'CameraRotate':
+                  return function(){
+                    var x_311 = ((2*(toFloat(pointer_302.x)/toFloat(canvasWidth_75)))-1);
+                    var y_312 = ((2*(toFloat(pointer_302.y)/toFloat(canvasHeight_76)))-1);
+                    var modPositionVector_313 = sqrt(((x_311*x_311)+(y_312*y_312)));
+                    var xChange_314 = ((2*toFloat((lastX_304-pointer_302.x)))/toFloat(canvasWidth_75));
+                    var yChange_315 = ((2*toFloat((lastY_305-pointer_302.y)))/toFloat(canvasHeight_76));
+                    var modChangeVector_316 = sqrt(((xChange_314*xChange_314)+(yChange_315*yChange_315)));
+                    var alpha_317 = (((_N.cmp(modChangeVector_316,0).ctor==='GT')&&(_N.cmp(modPositionVector_313,0).ctor==='GT')) ? ((abs(((x_311*xChange_314)+(y_312*yChange_315)))/modChangeVector_316)/modPositionVector_313) : 1.0);
+                    var rx_318 = (alpha_317*yChange_315);
+                    var ry_319 = (alpha_317*xChange_314);
+                    var rz_320 = ((y_312*xChange_314)-(x_311*yChange_315));
+                    var rotQuaternion_321 = normaliseQuaternion_33(A4(Quaternion_6, 1, rx_318, ry_319, rz_320));
+                    return _N.replace([['cameraQuaternion',normaliseQuaternion_33(multiplyQuaternion_34(oldMoveState_293.cameraQuaternion)(rotQuaternion_321))],['processedPosition',{ctor:"Tuple2", _0:pointer_302.x, _1:pointer_302.y}],['cameraModifyMode',newCameraModifyMode_299],['mainTouch',pointer_302]], oldMoveState_293);}();
+                case 'CameraTranslate':
+                  return function(){
+                    var distanceX_323 = ((toFloat((pointer_302.x-lastX_304))/toFloat(canvasWidth_75))*50);
+                    var distanceY_324 = ((toFloat((pointer_302.y-lastY_305))/toFloat(canvasHeight_76))*50);
+                    var translateBy_325 = function(){ 
+                    switch (case149._0.ctor) {
+                      case 'TranslateXY':
+                        return {ctor:"Tuple3", _0:distanceX_323, _1:(0-distanceY_324), _2:0};
+                      case 'TranslateXZ':
+                        return {ctor:"Tuple3", _0:distanceX_323, _1:0, _2:distanceY_324};
+                    }_E.Case('Line 342, Column 37') }();
+                    var _345000_326 = oldMoveState_293.cameraTransformation;
+                    var otx_327 = function(){ 
+                    switch (_345000_326.ctor) {
+                      case 'Vector3':
+                        return _345000_326._0;
+                    }_E.Case('Line 345, Column 45') }();
+                    var oty_328 = function(){ 
+                    switch (_345000_326.ctor) {
+                      case 'Vector3':
+                        return _345000_326._1;
+                    }_E.Case('Line 345, Column 45') }();
+                    var otz_329 = function(){ 
+                    switch (_345000_326.ctor) {
+                      case 'Vector3':
+                        return _345000_326._2;
+                    }_E.Case('Line 345, Column 45') }();
+                    var _346000_330 = translateBy_325;
+                    var tx_331 = function(){ 
+                    switch (_346000_330.ctor) {
+                      case 'Tuple3':
+                        return _346000_330._0;
+                    }_E.Case('Line 346, Column 39') }();
+                    var ty_332 = function(){ 
+                    switch (_346000_330.ctor) {
+                      case 'Tuple3':
+                        return _346000_330._1;
+                    }_E.Case('Line 346, Column 39') }();
+                    var tz_333 = function(){ 
+                    switch (_346000_330.ctor) {
+                      case 'Tuple3':
+                        return _346000_330._2;
+                    }_E.Case('Line 346, Column 39') }();
+                    return _N.replace([['cameraTransformation',A3(Vector3_5, (otx_327+tx_331), (oty_328+ty_332), (otz_329+tz_333))],['processedPosition',{ctor:"Tuple2", _0:pointer_302.x, _1:pointer_302.y}],['cameraModifyMode',newCameraModifyMode_299],['mainTouch',pointer_302]], oldMoveState_293);}();
+              }_E.Case('Line 315, Column 17') }();}());}());}();
+    }_E.Case('Line 293, Column 3') }();});
+  var Distrib_60 = F7(function(dataset_353, coordScheme_354, analysis_355, biologicalState_356, components_357, averages_358, modes_359){
+    return {
+      _:{
+      },
+      analysis:analysis_355,
+      averages:averages_358,
+      biologicalState:biologicalState_356,
+      components:components_357,
+      coordScheme:coordScheme_354,
+      dataset:dataset_353,
+      modes:modes_359};});
+  var JSONModel_61 = F3(function(localToGlobalMuTheta_360, localToGlobalLambda_361, distributions_362){
+    return {
+      _:{
+      },
+      distributions:distributions_362,
+      localToGlobalLambda:localToGlobalLambda_361,
+      localToGlobalMuTheta:localToGlobalMuTheta_360};});
+  var responseToJSONModel_62 = function(resp_363){
+    return function(){ 
+    switch (resp_363.ctor) {
+      case 'Failure':
+        return Nothing;
+      case 'Success':
+        return Just(fastJSON_11(resp_363._0));
+      case 'Waiting':
+        return Nothing;
+    }_E.Case('Line 377, Column 3') }();};
+  var surfaceToFloat_79 = function(x_365){
+    return function(){ 
+    switch (x_365.ctor) {
+      case 'Inner':
+        return 0;
+      case 'Outer':
+        return 1;
+    }_E.Case('Line 424, Column 20') }();};
+  var localNodeIndexBicubicLinear_83 = F2(function(_434001_366, _434000_367){
+    return function(){ 
+    switch (_434001_366.ctor) {
+      case 'BicubicLinearLocalNode':
+        return function(){ 
+        switch (_434000_367.ctor) {
+          case 'ElementID':
+            return ((((_434000_367._0-1)*nBicubicLinearLocalNodes_81)+(_434001_366._0-1))+1);
+        }_E.Case('Line 434, Column 4') }();
+    }_E.Case('Line 434, Column 4') }();});
+  var localNodeIndexTrilinear_84 = F2(function(_438001_370, _438000_371){
+    return function(){ 
+    switch (_438001_370.ctor) {
+      case 'TrilinearLocalNode':
+        return function(){ 
+        switch (_438000_371.ctor) {
+          case 'ElementID':
+            return ((((_438000_371._0-1)*nTrilinearLocalNodes_82)+(_438001_370._0-1))+1);
+        }_E.Case('Line 438, Column 4') }();
+    }_E.Case('Line 438, Column 4') }();});
+  var refinedNodeToXiCoordinates_88 = F2(function(_458000_374, surf_375){
+    return function(){ 
+    switch (_458000_374.ctor) {
+      case 'RefinedNodeID':
+        return function(){
+          var rnid0_377 = (_458000_374._0-1);
+          var col_378 = A2(mod, rnid0_377, refineX_73);
+          var row_379 = A2(div, _458000_374._0, refineX_73);
+          return Xi_72({ctor:"Tuple3", _0:(toFloat(col_378)*(1/toFloat((refineX_73-1)))), _1:(toFloat(row_379)*(1/toFloat((refineY_74-1)))), _2:surfaceToFloat_79(surf_375)});}();
+    }_E.Case('Line 451, Column 3') }();});
+  var cosh_89 = function(x_380){
+    return ((exp(x_380)+exp((0-x_380)))*0.5);};
+  var sinh_90 = function(x_381){
+    return ((exp(x_381)-exp((0-x_381)))*0.5);};
+  var prolateToCartesian_91 = F2(function(focalLength_382, _469000_383){
+    return function(){ 
+    switch (_469000_383.ctor) {
+      case 'Prolate':
+        return A3(Coord3D_0, ((focalLength_382*cosh_89(_469000_383._0.lambda))*cos(_469000_383._0.mu)), (((focalLength_382*sinh_90(_469000_383._0.lambda))*sin(_469000_383._0.mu))*cos(_469000_383._0.theta)), (((focalLength_382*sinh_90(_469000_383._0.lambda))*sin(_469000_383._0.mu))*sin(_469000_383._0.theta)));
+    }_E.Case('Line 468, Column 3') }();});
+  var phaseCorrect_92 = function(x_384){
+    return function(){ 
+    switch (x_384.ctor) {
+      case '::':
+        switch (x_384._1.ctor) {
+          case '::':
+            return ((_N.cmp((x_384._1._0-x_384._0),pi).ctor==='GT') ? _L.Cons((x_384._0+(2*pi)),phaseCorrect_92(x_384._1)) : _L.Cons(x_384._0,phaseCorrect_92(x_384._1)));
+        }break;
+    }
+    return x_384; }();};
+  var unsafeFind_93 = F2(function(f_389, x_390){
+    return function(){ 
+    switch (x_390.ctor) {
+      case '::':
+        return (f_389(x_390._0) ? x_390._0 : A2(unsafeFind_93, f_389, x_390._1));
+    }_E.Case('Line 478, Column 3') }();});
+  var findMatchingDistribution_94 = F3(function(_487001_393, _487000_394, jsonData_395){
+    return function(){ 
+    switch (_487001_393.ctor) {
+      case 'Dataset':
+        return function(){ 
+        switch (_487000_394.ctor) {
+          case 'BiologicalState':
+            return ((_N.eq(_487001_393._0,fromString(_str('Loading')))||_N.eq(_487000_394._0,fromString(_str('Loading')))) ? A2(rawLookup_12, jsonData_395.distributions, 0) : A2(unsafeFind_93, function(d_398){
+              return (_N.eq(d_398.dataset,_487001_393._0)&&_N.eq(d_398.biologicalState,_487000_394._0));}, toList(jsonData_395.distributions)));
+        }_E.Case('Line 484, Column 3') }();
+    }_E.Case('Line 484, Column 3') }();});
+  var uniq_96 = function(l_437){
+    return function(){ 
+    switch (l_437.ctor) {
+      case '::':
+        switch (l_437._1.ctor) {
+          case '::':
+            return (_N.eq(l_437._0,l_437._1._0) ? uniq_96(_L.Cons(l_437._1._0,l_437._1._1)) : _L.Cons(l_437._0,uniq_96(_L.Cons(l_437._1._0,l_437._1._1))));
+        }break;
+    }
+    return l_437; }();};
+  var listStates_97 = function(mm_442){
+    return function(){ 
+    switch (mm_442.ctor) {
+      case 'Just':
+        return A2(map, function(s_444){
+          return {ctor:"Tuple2", _0:s_444, _1:BiologicalState_59(fromString(s_444))};}, uniq_96(sort_95(A2(map, function(d_445){
+          return toString(d_445.biologicalState);}, toList(mm_442._0.distributions)))));
+      case 'Nothing':
+        return _J.toList([{ctor:"Tuple2", _0:_str('Loading...'), _1:BiologicalState_59(fromString(_str('Loading')))}]);
+    }_E.Case('Line 541, Column 17') }();};
+  var listDatasets_98 = function(mm_446){
+    return function(){ 
+    switch (mm_446.ctor) {
+      case 'Just':
+        return A2(map, function(s_448){
+          return {ctor:"Tuple2", _0:s_448, _1:Dataset_58(fromString(s_448))};}, uniq_96(sort_95(A2(map, function(d_449){
+          return toString(d_449.dataset);}, toList(mm_446._0.distributions)))));
+      case 'Nothing':
+        return _J.toList([{ctor:"Tuple2", _0:_str('Loading...'), _1:Dataset_58(fromString(_str('Loading')))}]);
+    }_E.Case('Line 549, Column 19') }();};
+  var jsonToModel_99 = F4(function(resp_450, modeWeights_451, dataSet_452, biologicalState_453){
+    return function(){ 
+    switch (resp_450.ctor) {
+      case 'Just':
+        return function(){
+          var trilinearLookupValue_463 = F3(function(values_477, _579001_478, _579000_479){
+            return function(){ 
+            switch (_579001_478.ctor) {
+              case 'ElementID':
+                return function(){ 
+                switch (_579000_479.ctor) {
+                  case 'TrilinearLocalNode':
+                    return A2(rawLookup_12, values_477, (((_579001_478._0-1)*nTrilinearLocalNodes_82)+(_579000_479._0-1)));
+                }_E.Case('Line 579, Column 11') }();
+            }_E.Case('Line 579, Column 11') }();});
+          var bicubicLinearLookupValue_464 = F3(function(values_482, _582001_483, _582000_484){
+            return function(){ 
+            switch (_582001_483.ctor) {
+              case 'ElementID':
+                return function(){ 
+                switch (_582000_484.ctor) {
+                  case 'BicubicLinearLocalNode':
+                    return A2(rawLookup_12, values_482, (((_582001_483._0-1)*nBicubicLinearLocalNodes_81)+(_582000_484._0-1)));
+                }_E.Case('Line 582, Column 11') }();
+            }_E.Case('Line 582, Column 11') }();});
+          var prolateCoords_468 = F3(function(elid_487, surf_488, rnid_489){
+            return function(){
+              var xi_490 = A2(refinedNodeToXiCoordinates_88, rnid_489, surf_488);
+              return Prolate_71({
+                _:{
+                },
+                lambda:A2(bicubicLinearInterpolate_16, lookupLambdaValue_465(elid_487), xi_490),
+                mu:A2(trilinearInterpolate_15, lookupMuValue_466(elid_487), xi_490),
+                theta:A2(trilinearInterpolate_15, lookupThetaValue_467(elid_487), xi_490)});}();});
+          var rcCoords_469 = F3(function(elID_491, surf_492, rnID_493){
+            return A2(prolateToCartesian_91, A2(rawLookup_12, resp_450._0.distributions, 0).averages.flength, A3(prolateCoords_468, elID_491, surf_492, rnID_493));});
+          var elementPrims_470 = F2(function(elID_494, surf_495){
+            return function(){
+              var nodeAt_497 = F2(function(x_498, y_499){
+                return A2(rawLookup_12, narray_496, ((y_499*refineX_73)+x_498));});
+              var narray_496 = fromList(A2(map, A2(rcCoords_469, elID_494, surf_495), allRefinedNodes_85));
+              return A2(concatMap, function(xlow_500){
+                return A2(concatMap, function(ylow_501){
+                  return _J.toList([A3(Triangle_1, A2(nodeAt_497, xlow_500, ylow_501), A2(nodeAt_497, xlow_500, (ylow_501+1)), A2(nodeAt_497, (xlow_500+1), ylow_501)),A3(Triangle_1, A2(nodeAt_497, (xlow_500+1), ylow_501), A2(nodeAt_497, xlow_500, (ylow_501+1)), A2(nodeAt_497, (xlow_500+1), (ylow_501+1)))]);}, _L.range(0,(refineY_74-2)));}, _L.range(0,(refineX_73-2)));}();});
+          var distrib_455 = A3(findMatchingDistribution_94, dataSet_452, biologicalState_453, resp_450._0);
+          var modes_456 = toList(distrib_455.modes);
+          var globalLambdas_457 = linearCombine_17(_L.Cons({
+            _:{
+            },
+            mup:1.0,
+            values:distrib_455.averages.lambdas},A3(zipWith, function(w_471){
+            return function(m_472){
+              return {
+                _:{
+                },
+                mup:w_471,
+                values:m_472.lambdas};};}, modeWeights_451, modes_456)));
+          var globalMus_458 = linearCombine_17(_L.Cons({
+            _:{
+            },
+            mup:1.0,
+            values:distrib_455.averages.mus},A3(zipWith, function(w_473){
+            return function(m_474){
+              return {
+                _:{
+                },
+                mup:w_473,
+                values:m_474.mus};};}, modeWeights_451, modes_456)));
+          var globalThetas_459 = linearCombine_17(_L.Cons({
+            _:{
+            },
+            mup:1.0,
+            values:distrib_455.averages.thetas},A3(zipWith, function(w_475){
+            return function(m_476){
+              return {
+                _:{
+                },
+                mup:w_475,
+                values:m_476.thetas};};}, modeWeights_451, modes_456)));
+          var localLambdas_460 = A2(linearRemapArray_14, resp_450._0.localToGlobalLambda, globalLambdas_457);
+          var localMus_461 = A2(simpleRemapArray_13, resp_450._0.localToGlobalMuTheta, globalMus_458);
+          var localThetas_462 = function(x){
+            return fromList(phaseCorrect_92(toList(x)));}(A2(simpleRemapArray_13, resp_450._0.localToGlobalMuTheta, globalThetas_459));
+          var lookupLambdaValue_465 = bicubicLinearLookupValue_464(localLambdas_460);
+          var lookupMuValue_466 = trilinearLookupValue_463(localMus_461);
+          var lookupThetaValue_467 = trilinearLookupValue_463(localThetas_462);
+          return GLPrimModel_7({
+            _:{
+            },
+            primitives:A2(concatMap, function(surf_502){
+            return A2(concatMap, function(elID_503){
+              return A2(elementPrims_470, elID_503, surf_502);}, allElements_86);}, allSurfaces_87)});}();
+      case 'Nothing':
+        return placeholderModel_43;
+    }_E.Case('Line 557, Column 3') }();});
+  var labelSlider_109 = F2(function(idx_513, sliderElem_514){
+    return A2(beside, plainText(_L.append(_str('Mode '),_L.append(show(idx_513),_str(': ')))), sliderElem_514);});
+  var makeSceneView_110 = F2(function(primModelValue_515, cameraMatrixValue_516){
+    return function(){
+      var camPerspect_517 = A2(multiply4x4_27, myPerspectiveMatrix_46, cameraMatrixValue_516);
+      var rotatedDiffuseDirection_518 = vec4ToXYZ_23(A2(mat4x4xv_28, mat4ToInverseMat3_31(cameraMatrixValue_516), initialDiffuseDirection_77));
+      return A4(glSceneObject_9, canvasWidth_75, canvasHeight_76, primModelValue_515, GLPrimSceneView_8({
+        _:{
+        },
+        ambientColour:A3(GLColour_2, 1, 1, 1),
+        ambientIntensity:0.4,
+        diffuseColour:A3(GLColour_2, 1, 1, 1),
+        diffuseDirection:rotatedDiffuseDirection_518,
+        diffuseIntensity:0.3,
+        projection:camPerspect_517}));}();});
+  var glSceneObject_9 = N.glSceneObject;
+  var sendRaw_10 = NJSON.send;
+  var fastJSON_11 = NJSON.fastJSON;
+  var rawLookup_12 = NJSON.rawLookup;
+  var simpleRemapArray_13 = NJSON.simpleRemapArray;
+  var linearRemapArray_14 = NJSON.linearRemapArray;
+  var trilinearInterpolate_15 = NJSON.trilinearInterpolate;
+  var bicubicLinearInterpolate_16 = NJSON.bicubicLinearInterpolate;
+  var linearCombine_17 = NJSON.linearCombine;
+  var slider_18 = NSLIDE.slider;
+  var dynamicDropDown_20 = NDYNINP.dynamicDropDown;
+  var dropDownToElement_21 = NDYNINP.dropDownToElement;
+  var identity4x4_22 = A4(Matrix4x4_4, A4(Vector4_3, 1, 0, 0, 0), A4(Vector4_3, 0, 1, 0, 0), A4(Vector4_3, 0, 0, 1, 0), A4(Vector4_3, 0, 0, 0, 1));
+  var lowVal_39 = -50;
+  var highVal_40 = 50;
+  var lowZ_41 = -50;
+  var highZ_42 = 50;
+  var placeholderModel_43 = function(){
+    var quad_268 = F4(function(a_269, b_270, c_271, d_272){
+      return _J.toList([A3(Triangle_1, a_269, b_270, c_271),A3(Triangle_1, a_269, c_271, d_272)]);});
+    var clbf_260 = A3(Coord3D_0, lowVal_39, lowVal_39, lowZ_41);
+    var crbf_261 = A3(Coord3D_0, highVal_40, lowVal_39, lowZ_41);
+    var cltf_262 = A3(Coord3D_0, lowVal_39, highVal_40, lowZ_41);
+    var crtf_263 = A3(Coord3D_0, highVal_40, highVal_40, lowZ_41);
+    var clba_264 = A3(Coord3D_0, lowVal_39, lowVal_39, highZ_42);
+    var crba_265 = A3(Coord3D_0, highVal_40, lowVal_39, highZ_42);
+    var clta_266 = A3(Coord3D_0, lowVal_39, highVal_40, highZ_42);
+    var crta_267 = A3(Coord3D_0, highVal_40, highVal_40, highZ_42);
+    return GLPrimModel_7({
+      _:{
+      },
+      primitives:_L.append(A4(quad_268, clbf_260, crbf_261, crtf_263, cltf_262),_L.append(A4(quad_268, clba_264, clbf_260, cltf_262, clta_266),_L.append(A4(quad_268, crbf_261, crba_265, crta_267, crtf_263),_L.append(A4(quad_268, clba_264, clta_266, crta_267, crba_265),_L.append(A4(quad_268, cltf_262, crtf_263, crta_267, clta_266),_L.append(A4(quad_268, crbf_261, clbf_260, clba_264, crba_265),_J.toList([])))))))});}();
+  var myFovRadians_44 = (pi/4);
+  var myPerspectiveMatrix_46 = A4(perspectiveMatrix_45, 1.0e-2, 1000, 1, myFovRadians_44);
+  var initialCameraMoveState_52 = {
+    _:{
+    },
+    cameraModifyMode:CameraRotate_49,
+    cameraQuaternion:A4(Quaternion_6, 1, 0, 0, 0),
+    cameraTransformation:A3(Vector3_5, 0, 0, -200),
+    mainTouch:{
+    _:{
+    },
+    id:0,
+    t0:0,
+    x:0,
+    x0:0,
+    y:0,
+    y0:0},
+    processedPosition:{ctor:"Tuple2", _0:0, _1:0},
+    wasDragging:false};
+  var canvasTouches_54 = A2(lift,filter(function(t_287){
+    return ((_N.cmp(t_287.x,canvasWidth_75).ctor==='LT')&&(_N.cmp(t_287.y,canvasHeight_76).ctor==='LT'));}),Touch.touches);
+  var cameraMoveState_55 = A3(Signal.foldp, updateCameraMoveState_56, initialCameraMoveState_52, A5(Signal.lift4, function(v0_288){
+    return function(v1_289){
+      return function(v2_290){
+        return function(v3_291){
+          return {ctor:"Tuple4", _0:v0_288, _1:v1_289, _2:v2_290, _3:v3_291};};};};}, Keyboard.shift, Keyboard.ctrl, Keyboard.keysDown, canvasTouches_54));
+  var cameraMatrix_57 = A2(lift, function(x_352){
+    return A2(multiply4x4_27, vectorToTranslationMatrix_38(x_352.cameraTransformation), quaternionToRotationMatrix_32(x_352.cameraQuaternion));}, cameraMoveState_55);
+  var refineX_73 = 6;
+  var refineY_74 = 6;
+  var canvasWidth_75 = 500;
+  var canvasHeight_76 = 500;
+  var initialDiffuseDirection_77 = A4(Vector4_3, (0-0.3), (0-0.5), (0-0.8), 1);
+  var jsonModel_78 = A2(lift, responseToJSONModel_62, sendRaw_10(constant(Http.get(_str('LV.json')))));
+  var nElements_80 = 16;
+  var nBicubicLinearLocalNodes_81 = 32;
+  var nTrilinearLocalNodes_82 = 8;
+  var allRefinedNodes_85 = A2(map, RefinedNodeID_70, _L.range(1,(refineX_73*refineY_74)));
+  var allElements_86 = A2(map, ElementID_65, _L.range(1,nElements_80));
+  var allSurfaces_87 = _J.toList([Inner_68,Outer_69]);
+  var sort_95 = function(){
+    var sequences_399 = function(l_405){
+      return function(){ 
+      switch (l_405.ctor) {
+        case '::':
+          switch (l_405._1.ctor) {
+            case '::':
+              return ((_N.cmp(l_405._0,l_405._1._0).ctor==='GT') ? A3(descending_400, l_405._1._0, _J.toList([l_405._0]), l_405._1._1) : A3(ascending_401, l_405._1._0, function(x_409){
+                return _L.Cons(l_405._0,x_409);}, l_405._1._1));
+          }break;
+      }
+      return _J.toList([l_405]); }();};
+    var descending_400 = F3(function(a_411, asq_412, bsl_413){
+      return function(){ 
+      switch (bsl_413.ctor) {
+        case '::':
+          return ((_N.cmp(a_411,bsl_413._0).ctor==='GT') ? A3(descending_400, bsl_413._0, _L.Cons(a_411,asq_412), bsl_413._1) : _L.Cons(_L.Cons(a_411,asq_412),sequences_399(bsl_413)));
+      }
+      return _L.Cons(_L.Cons(a_411,asq_412),sequences_399(bsl_413)); }();});
+    var ascending_401 = F3(function(a_416, asq_417, bsl_418){
+      return function(){ 
+      switch (bsl_418.ctor) {
+        case '::':
+          return ((_N.cmp(a_416,bsl_418._0).ctor!=='GT') ? A3(ascending_401, bsl_418._0, function(ys_421){
+            return asq_417(_L.Cons(a_416,ys_421));}, bsl_418._1) : _L.Cons(asq_417(_J.toList([a_416])),sequences_399(bsl_418)));
+      }
+      return _L.Cons(asq_417(_J.toList([a_416])),sequences_399(bsl_418)); }();});
+    var mergeAll_402 = function(xl_422){
+      return function(){ 
+      switch (xl_422.ctor) {
+        case '::':
+          switch (xl_422._1.ctor) {
+            case '[]':
+              return xl_422._0;
+          }break;
+      }
+      return mergeAll_402(mergePairs_403(xl_422)); }();};
+    var mergePairs_403 = function(xl_425){
+      return function(){ 
+      switch (xl_425.ctor) {
+        case '::':
+          switch (xl_425._1.ctor) {
+            case '::':
+              return _L.Cons(A2(merge_404, xl_425._0, xl_425._1._0),mergePairs_403(xl_425._1._1));
+          }break;
+      }
+      return xl_425; }();};
+    var merge_404 = F2(function(asq_429, bsq_430){
+      return function(){ 
+      var case243 = {ctor:"Tuple2", _0:asq_429, _1:bsq_430};
+      switch (case243.ctor) {
+        case 'Tuple2':
+          switch (case243._0.ctor) {
+            case '::':
+              switch (case243._1.ctor) {
+                case '::':
+                  return ((_N.cmp(case243._0._0,case243._1._0).ctor==='GT') ? _L.Cons(case243._1._0,A2(merge_404, asq_429, case243._1._1)) : _L.Cons(case243._1._0,A2(merge_404, case243._0._1, bsq_430)));
+              }break;
+            case '[]':
+              return case243._1;
+          }
+          switch (case243._1.ctor) {
+            case '[]':
+              return case243._0;
+          }break;
+      }_E.Case('Line 521, Column 21') }();});
+    return function(x){
+      return mergeAll_402(sequences_399(x));};}();
+  var selectDataset_100 = A2(dynamicDropDown_20, _str('Loading...        '), Dataset_58(fromString(_str('Loading'))));
+  var selectBiologicalState_101 = A2(dynamicDropDown_20, _str('Loading...    '), BiologicalState_59(fromString(_str('Loading'))));
+  var maxModeWeights_102 = 20;
+  var possibleModeWeights_103 = A2(map, function(__504){
+    return A6(slider_18, canvasWidth_75, 8, (0-2.0), 2.0, 1.0e-2, 0.0);}, _L.range(1,maxModeWeights_102));
+  var numberOfModes_104 = A2(lift,function(mm_505){
+    return function(){ 
+    switch (mm_505.ctor) {
+      case 'Just':
+        return function(x){
+          return length(toList(x));}(rawLookup_12(mm_505._0.distributions)(0).modes);
+      case 'Nothing':
+        return 0;
+    }_E.Case('Line 632, Column 25') }();},jsonModel_78);
+  var modeWeights_105 = A3(lift2,F2(function(f,x){return f(x)}),A2(lift,take,numberOfModes_104),combine(A2(map, snd, possibleModeWeights_103)));
+  var primModel_106 = A3(lift2,F2(function(f,x){return f(x)}),A3(lift2,F2(function(f,x){return f(x)}),A3(lift2,F2(function(f,x){return f(x)}),A2(lift,jsonToModel_99,jsonModel_78),modeWeights_105),snd(selectDataset_100)),snd(selectBiologicalState_101));
+  var sliderElems_108 = A3(lift2,F2(function(f,x){return f(x)}),A2(lift,function(nModes_511){
+    return function(modes_512){
+      return A2(map, uncurry(labelSlider_109), A2(take, nModes_511, A2(zip, _L.range(1,maxModeWeights_102), modes_512)));};},numberOfModes_104),combine(A2(map, fst, possibleModeWeights_103)));
+  var main_107 = A2(lift,flow(down),A3(lift2, function(x_507){
+    return function(y_508){
+      return _L.Cons(x_507,y_508);};}, A3(lift2,F2(function(f,x){return f(x)}),A2(lift,makeSceneView_110,primModel_106),cameraMatrix_57), A3(lift2, function(x_509){
+    return function(y_510){
+      return _L.append(x_509,y_510);};}, sliderElems_108, combine(_J.toList([constant(A2(spacer, 1, 80)),A2(lift,flow(right),combine(_J.toList([constant(A2(spacer, 50, 1)),A2(lift,function(x){
+    return dropDownToElement_21(fst(selectDataset_100))(listDatasets_98(x));},jsonModel_78),A2(lift,function(x){
+    return dropDownToElement_21(fst(selectBiologicalState_101))(listStates_97(x));},jsonModel_78)])))])))));
+  elm.Native = elm.Native||{};
+  var _ = elm.Native.Main||{};
+  _.$op = {};
+  _.Coord3D = Coord3D_0;
+  _.Triangle = Triangle_1;
+  _.GLColour = GLColour_2;
+  _.Vector4 = Vector4_3;
+  _.Matrix4x4 = Matrix4x4_4;
+  _.Vector3 = Vector3_5;
+  _.Quaternion = Quaternion_6;
+  _.GLPrimModel = GLPrimModel_7;
+  _.GLPrimSceneView = GLPrimSceneView_8;
+  _.glSceneObject = glSceneObject_9;
+  _.sendRaw = sendRaw_10;
+  _.fastJSON = fastJSON_11;
+  _.rawLookup = rawLookup_12;
+  _.simpleRemapArray = simpleRemapArray_13;
+  _.linearRemapArray = linearRemapArray_14;
+  _.trilinearInterpolate = trilinearInterpolate_15;
+  _.bicubicLinearInterpolate = bicubicLinearInterpolate_16;
+  _.linearCombine = linearCombine_17;
+  _.slider = slider_18;
+  _.DynamicDropdown = DynamicDropdown_19;
+  _.dynamicDropDown = dynamicDropDown_20;
+  _.dropDownToElement = dropDownToElement_21;
+  _.identity4x4 = identity4x4_22;
+  _.vec4ToXYZ = vec4ToXYZ_23;
+  _.matrix4x4Row = matrix4x4Row_24;
+  _.matrix4x4Column = matrix4x4Column_25;
+  _.dotProduct = dotProduct_26;
+  _.multiply4x4 = multiply4x4_27;
+  _.mat4x4xv = mat4x4xv_28;
+  _.transpose4x4 = transpose4x4_29;
+  _.norm4 = norm4_30;
+  _.mat4ToInverseMat3 = mat4ToInverseMat3_31;
+  _.quaternionToRotationMatrix = quaternionToRotationMatrix_32;
+  _.normaliseQuaternion = normaliseQuaternion_33;
+  _.multiplyQuaternion = multiplyQuaternion_34;
+  _.conjugateQuaternion = conjugateQuaternion_35;
+  _.rotateVectorByQuaternion = rotateVectorByQuaternion_36;
+  _.eulerToQuaternion = eulerToQuaternion_37;
+  _.vectorToTranslationMatrix = vectorToTranslationMatrix_38;
+  _.lowVal = lowVal_39;
+  _.highVal = highVal_40;
+  _.lowZ = lowZ_41;
+  _.highZ = highZ_42;
+  _.placeholderModel = placeholderModel_43;
+  _.myFovRadians = myFovRadians_44;
+  _.perspectiveMatrix = perspectiveMatrix_45;
+  _.myPerspectiveMatrix = myPerspectiveMatrix_46;
+  _.TranslateXY = TranslateXY_47;
+  _.TranslateXZ = TranslateXZ_48;
+  _.CameraRotate = CameraRotate_49;
+  _.CameraTranslate = CameraTranslate_50;
+  _.CameraMoveState = CameraMoveState_51;
+  _.initialCameraMoveState = initialCameraMoveState_52;
+  _.keyboardAlt = keyboardAlt_53;
+  _.canvasTouches = canvasTouches_54;
+  _.cameraMoveState = cameraMoveState_55;
+  _.updateCameraMoveState = updateCameraMoveState_56;
+  _.cameraMatrix = cameraMatrix_57;
+  _.Dataset = Dataset_58;
+  _.BiologicalState = BiologicalState_59;
+  _.Distrib = Distrib_60;
+  _.JSONModel = JSONModel_61;
+  _.responseToJSONModel = responseToJSONModel_62;
+  _.GlobalMuLambda = GlobalMuLambda_63;
+  _.GlobalTheta = GlobalTheta_64;
+  _.ElementID = ElementID_65;
+  _.BicubicLinearLocalNode = BicubicLinearLocalNode_66;
+  _.TrilinearLocalNode = TrilinearLocalNode_67;
+  _.Inner = Inner_68;
+  _.Outer = Outer_69;
+  _.RefinedNodeID = RefinedNodeID_70;
+  _.Prolate = Prolate_71;
+  _.Xi = Xi_72;
+  _.refineX = refineX_73;
+  _.refineY = refineY_74;
+  _.canvasWidth = canvasWidth_75;
+  _.canvasHeight = canvasHeight_76;
+  _.initialDiffuseDirection = initialDiffuseDirection_77;
+  _.jsonModel = jsonModel_78;
+  _.surfaceToFloat = surfaceToFloat_79;
+  _.nElements = nElements_80;
+  _.nBicubicLinearLocalNodes = nBicubicLinearLocalNodes_81;
+  _.nTrilinearLocalNodes = nTrilinearLocalNodes_82;
+  _.localNodeIndexBicubicLinear = localNodeIndexBicubicLinear_83;
+  _.localNodeIndexTrilinear = localNodeIndexTrilinear_84;
+  _.allRefinedNodes = allRefinedNodes_85;
+  _.allElements = allElements_86;
+  _.allSurfaces = allSurfaces_87;
+  _.refinedNodeToXiCoordinates = refinedNodeToXiCoordinates_88;
+  _.cosh = cosh_89;
+  _.sinh = sinh_90;
+  _.prolateToCartesian = prolateToCartesian_91;
+  _.phaseCorrect = phaseCorrect_92;
+  _.unsafeFind = unsafeFind_93;
+  _.findMatchingDistribution = findMatchingDistribution_94;
+  _.sort = sort_95;
+  _.uniq = uniq_96;
+  _.listStates = listStates_97;
+  _.listDatasets = listDatasets_98;
+  _.jsonToModel = jsonToModel_99;
+  _.selectDataset = selectDataset_100;
+  _.selectBiologicalState = selectBiologicalState_101;
+  _.maxModeWeights = maxModeWeights_102;
+  _.possibleModeWeights = possibleModeWeights_103;
+  _.numberOfModes = numberOfModes_104;
+  _.modeWeights = modeWeights_105;
+  _.primModel = primModel_106;
+  _.main = main_107;
+  _.sliderElems = sliderElems_108;
+  _.labelSlider = labelSlider_109;
+  _.makeSceneView = makeSceneView_110
+  return elm.Main = _;
+  };
+        </script>
+    </head>
+    <body>
+        <script type="text/javascript">
+            Elm.fullscreen(Elm.Main)
+        </script>
+        <noscript>
+            
+        </noscript>
+    </body>
+</html>
