@@ -396,8 +396,8 @@ data BicubicLinearLocalNode = BicubicLinearLocalNode Int
 -- xi1 minor, xi3 major.
 data TrilinearLocalNode = TrilinearLocalNode Int
 
--- There are two surfaces - endo and epicardial.
-data Surface = Endocardial | Epicardial
+-- There are two surfaces - inner and outer.
+data Surface = Inner | Outer
 
 -- For graphical purposes, we refine each element into (refineX-1)*(refineY-1) quads, each containing
 -- refineX*refineY nodes. This identifies one of those nodes within an element (as a number in
@@ -422,8 +422,8 @@ jsonModel : Signal (Maybe JSONModel)
 jsonModel = lift responseToJSONModel (sendRaw (constant <| Http.get ("LV.json")))
 
 surfaceToFloat x = case x of
-  Endocardial -> 0
-  Epicardial -> 1
+  Inner -> 0
+  Outer -> 1
 
 nElements = 16
 nBicubicLinearLocalNodes = 32
@@ -444,7 +444,7 @@ allElements : [ElementID]
 allElements = map ElementID [1..nElements]
 
 allSurfaces : [Surface]
-allSurfaces = [Endocardial, Epicardial]
+allSurfaces = [Inner, Outer]
 
 refinedNodeToXiCoordinates : RefinedNodeID -> Surface -> Xi
 refinedNodeToXiCoordinates (RefinedNodeID rnid) surf =
