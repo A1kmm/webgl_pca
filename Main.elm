@@ -9,9 +9,10 @@ import Http (Success, Waiting, Failure)
 import Json
 import JavaScript.Experimental
 import Graphics.Input (dropDown)
-import JavaScript (fromList, toList, fromString)
+import JavaScript (fromList, toList, fromString, toString)
 import Native.JQuery
 import Native.Graphics.Slider as NSLIDE
+import Native.Graphics.DynamicInput as NDYNINP
 
 -- 3D cartesian coordinates.
 data Coord3D = Coord3D Float Float Float
@@ -73,6 +74,15 @@ linearCombine = NJSON.linearCombine
 -- Creates a slider widget.
 slider : Int -> Int -> Float -> Float -> Float -> Float -> (Signal Element, Signal Float)
 slider = NSLIDE.slider
+
+data DynamicDropdown a = DynamicDropdown
+-- Creates a dynamic dropdown widget.
+dynamicDropDown : String -> a -> (DynamicDropdown, Signal a)
+dynamicDropDown = NDYNINP.dynamicDropDown
+
+-- Binds a DynamicDropdown to a specific list (use with lift)
+dropDownToElement : DynamicDropdown a -> [(String, a)] -> Element
+dropDownToElement = NDYNINP.dropDownToElement
 
 -- Some basic matrix maths specific to 4x4 matrices...
 identity4x4 = Matrix4x4 (Vector4 1 0 0 0)
@@ -346,10 +356,10 @@ cameraMatrix = lift (\x ->
   quaternionToRotationMatrix x.cameraQuaternion
   ) cameraMoveState
 
-data Dataset = DETERMINE | MESA
-data BiologicalState = EndDiastole | EndSystole | AverageState
+data Dataset = Dataset JSString
+data BiologicalState = BiologicalState JSString
 
-type LVDistrib = {dataset: JSString, coordScheme: JSString,
+type Distrib = {dataset: JSString, coordScheme: JSString,
                   analysis: JSString,
                   biologicalState: JSString, components: Int,
                   averages: { flength: Float, lambdas: JSArray Float, mus: JSArray Float,
@@ -357,13 +367,13 @@ type LVDistrib = {dataset: JSString, coordScheme: JSString,
                   modes: JSArray { lambdas: JSArray Float, mus: JSArray Float,
                                    thetas: JSArray Float }
                  }
-type LVJSON =
+type JSONModel =
   { localToGlobalMuTheta: JSArray {loc: Int, glob: Int},
     localToGlobalLambda: JSArray {loc: Int, globs: JSArray {glob: Int, mup: Float}},
-    distributions: JSArray LVDistrib }
+    distributions: JSArray Distrib }
 
-responseToLVJSON : Response JSString -> Maybe LVJSON
-responseToLVJSON resp = 
+responseToJSONModel : Response JSString -> Maybe JSONModel
+responseToJSONModel resp = 
   case resp of
     Waiting -> Nothing
     Failure _ _ -> Nothing
@@ -408,7 +418,8 @@ canvasHeight = 500
 
 initialDiffuseDirection = Vector4 (0-0.3) (0-0.5) (0-0.8) 1
 
-lvJSON = lift responseToLVJSON (sendRaw (constant <| Http.get ("LV.json")))
+jsonModel : Signal (Maybe JSONModel)
+jsonModel = lift responseToJSONModel (sendRaw (constant <| Http.get ("LV.json")))
 
 surfaceToFloat x = case x of
   Endocardial -> 0
@@ -468,21 +479,81 @@ unsafeFind f x =
     (h::t) -> if f h then h else unsafeFind f t
     -- [] fails.
 
-findMatchingDistribution : Dataset -> BiologicalState -> LVJSON -> LVDistrib
-findMatchingDistribution ds bs lvData =
-  let
-    dsName = fromString <| case ds of
-      DETERMINE -> "DETERMINE"
-      MESA -> "MESA"
-    bsName = fromString <| case bs of
-      EndDiastole -> "ED"
-      EndSystole -> "ES"
-      AverageState -> "ED-ES"
-  in
-   unsafeFind (\d -> d.dataset == dsName && d.biologicalState == bsName) (toList lvData.distributions)
+findMatchingDistribution : Dataset -> BiologicalState -> JSONModel -> Distrib
+findMatchingDistribution (Dataset dsName) (BiologicalState bsName) jsonData =
+  if (dsName == fromString "Loading" || bsName == fromString "Loading")
+    then rawLookup jsonData.distributions 0
+    else
+      unsafeFind (\d -> d.dataset == dsName && d.biologicalState == bsName) (toList jsonData.distributions)
 
-lvJSONToModel : Maybe LVJSON -> [Float] -> Dataset -> BiologicalState -> GLPrimModel
-lvJSONToModel resp modeWeights dataSet biologicalState =
+-- Based off the sort from GHC.
+sort : [Comparable k] -> [Comparable k]
+sort =
+  let
+    sequences l = case l of
+      (a::b::xs) ->
+        if a > b then descending b [a]  xs
+                 else ascending  b (\x -> a::x) xs
+      xs -> [xs]
+
+    descending a asq bsl = case bsl of
+      (b::bs) -> if a > b
+                   then descending b (a::asq) bs
+                   else (a :: asq) :: sequences bsl
+      _ -> (a :: asq) :: sequences bsl
+
+    ascending a asq bsl =
+      case bsl of
+        (b::bs) ->
+          if a <= b
+            then ascending b (\ys -> asq (a::ys)) bs
+            else (asq [a]) :: sequences bsl
+        _ -> (asq [a]) :: sequences bsl
+
+    mergeAll xl = case xl of
+      [x] -> x
+      xs -> mergeAll (mergePairs xs)
+
+    mergePairs xl = case xl of
+      (a::b::xs) -> merge a b :: mergePairs xs
+      _ -> xl
+
+    merge asq bsq = case (asq, bsq) of
+      (a::as', b::bs') ->
+        if a > b
+           then b::merge asq bs'
+           else b::merge as' bsq
+      ([], bs) -> bs
+      (asq', []) -> asq'
+  in
+    mergeAll . sequences
+
+uniq : [a] -> [a]
+uniq l = case l of
+  (a::b::l) ->
+    if a == b
+       then uniq (b::l)
+       else a::(uniq (b::l))
+  x -> x
+
+-- Makes a list of all BiologicalStates (and their names) in the model.
+listStates : Maybe JSONModel -> [(String, BiologicalState)]
+listStates mm = case mm of
+  Just m ->
+    map (\s -> (s, BiologicalState (fromString s))) <| uniq <| sort <|
+    map (\d -> toString d.biologicalState) <| toList (m.distributions)
+  Nothing -> [("Loading...", BiologicalState (fromString "Loading"))]
+
+-- Makes a list of all Datasets (and their names) in the model.
+listDatasets : Maybe JSONModel -> [(String, Dataset)]
+listDatasets mm = case mm of
+  Just m -> map (\s -> (s, Dataset (fromString s))) <| uniq <| sort <|
+            map (\d -> toString d.dataset) <| toList (m.distributions)
+  Nothing -> [("Loading...", Dataset (fromString "Loading"))]
+
+
+jsonToModel : Maybe JSONModel -> [Float] -> Dataset -> BiologicalState -> GLPrimModel
+jsonToModel resp modeWeights dataSet biologicalState =
   case resp of
     Nothing -> placeholderModel
     Just rawData ->
@@ -549,29 +620,47 @@ lvJSONToModel resp modeWeights dataSet biologicalState =
                        concatMap (\surf -> concatMap (\elID -> elementPrims elID surf) allElements)
                                  allSurfaces }
 
-modeWeights : [(Signal Element, Signal Float)]
+selectDataset : (DynamicDropdown, Signal Dataset)
+selectDataset = dynamicDropDown "Loading...        " (Dataset (fromString "Loading"))
+selectBiologicalState : (DynamicDropdown, Signal BiologicalState)
+selectBiologicalState = dynamicDropDown "Loading...    " (BiologicalState (fromString "Loading"))
+
+maxModeWeights = 20
+possibleModeWeights : [(Signal Element, Signal Float)]
+possibleModeWeights = map (\_ -> slider canvasWidth 8 (0-2.0) 2.0 0.01 0.0) [1..maxModeWeights]
+numberOfModes : Signal Int
+numberOfModes = (\mm -> case mm of
+                          Nothing -> 0
+                          Just m -> length . toList <| (m.distributions `rawLookup` 0).modes)
+                   <~ jsonModel
+modeWeights : Signal [Float]
 modeWeights =
-  map (\_ -> slider canvasWidth 8 (0-2.0) 2.0 0.01 0.0) [1..6]
-
-selectDataset : (Signal Element, Signal Dataset)
-selectDataset = dropDown [("DETERMINE (diseased hearts)", DETERMINE),
-                          ("MESA (healthy hearts)", MESA)]
-
-selectBiologicalState : (Signal Element, Signal BiologicalState)
-selectBiologicalState = dropDown [("End systole", EndSystole),
-                                  ("End diastole", EndDiastole),
-                                  ("Average", AverageState)]
+  take <~ numberOfModes ~ (combine <| map snd possibleModeWeights)
 
 primModel : Signal GLPrimModel
-primModel = lvJSONToModel <~ lvJSON ~ combine (map snd modeWeights) ~ snd selectDataset ~ snd selectBiologicalState
+primModel = jsonToModel <~ jsonModel ~ modeWeights ~ snd selectDataset ~ snd selectBiologicalState
 
 main : Signal Element
 main =
-  flow down <~ combine (((makeSceneView <~ primModel ~ cameraMatrix)::
-                            (map (\(idx, (modeElem, _)) -> labelSlider idx <~ modeElem) (zip [1..6] modeWeights)))
-                         ++ [constant (spacer 1 80),
-                             flow right <~ combine [constant (spacer 50 1), fst selectDataset,
-                                                    constant (spacer 10 1), fst selectBiologicalState]])
+  flow down <~
+    lift2 (::) (makeSceneView <~ primModel ~ cameraMatrix)
+      (lift2 (++) sliderElems
+       (combine 
+        [constant (spacer 1 80),
+         flow right <~ combine [constant (spacer 50 1),
+                                dropDownToElement (fst selectDataset) . listDatasets <~
+                                jsonModel,
+                                dropDownToElement (fst selectBiologicalState) . listStates <~
+                                jsonModel
+                               ]]
+       )
+      )
+
+sliderElems : Signal [Element]
+sliderElems = (\nModes modes ->
+                map (uncurry labelSlider)
+                    (take nModes (zip [1..maxModeWeights] modes))
+              ) <~ numberOfModes ~ (combine <| map fst possibleModeWeights)
 
 labelSlider : Int -> Element -> Element
 labelSlider idx sliderElem = (plainText <| "Mode " ++ (show idx) ++ ": ") `beside` sliderElem
