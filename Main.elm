@@ -216,6 +216,8 @@ vectorToTranslationMatrix (Vector3 x y z) =
             (Vector4 0 0 1 z)
             (Vector4 0 0 0 1)
 
+reverseTriangle (Triangle a b c) = Triangle a c b
+
 lowVal = 0-50
 highVal = 50
 lowZ = 0-50
@@ -602,23 +604,40 @@ jsonToModel resp modeWeights dataSet biologicalState =
         rcCoords : ElementID -> Surface -> RefinedNodeID -> Coord3D
         rcCoords elID surf rnID = prolateToCartesian (rawLookup rawData.distributions 0).averages.flength
                                                          (prolateCoords elID surf rnID)
-        elementPrims elID surf =
+        elementPrims elID =
           let
-             narray = fromList (map (rcCoords elID surf) allRefinedNodes)
-             nodeAt x y = rawLookup narray (y * refineX + x)
+             narrayInner = fromList (map (rcCoords elID Inner) allRefinedNodes)
+             narrayOuter = fromList (map (rcCoords elID Outer) allRefinedNodes)
+             nodeAt s x y = case s of Inner -> rawLookup narrayInner (y * refineX + x)
+                                      Outer -> rawLookup narrayOuter (y * refineX + x)
+             isTop = case elID of ElementID n -> n <= 4
+             -- The 'top' elements get an extra surface running from the outside
+             -- to the inside to close the volume.
+             maybeEnd xlow ylow = if isTop && ylow == refineY - 2 then [
+                Triangle (nodeAt Outer xlow (ylow + 1)) (nodeAt Inner xlow (ylow + 1))
+                                       (nodeAt Outer (xlow + 1) (ylow + 1)),
+                Triangle (nodeAt Outer (xlow + 1) (ylow + 1)) (nodeAt Inner xlow (ylow + 1))
+                                       (nodeAt Inner (xlow + 1) (ylow + 1))
+                                      ] else []
           in
             concatMap (\xlow ->
               concatMap (\ylow ->
-                [Triangle (nodeAt xlow ylow) (nodeAt xlow (ylow + 1))
-                          (nodeAt (xlow + 1) ylow),
-                 Triangle (nodeAt (xlow + 1) ylow) (nodeAt xlow (ylow + 1))
-                          (nodeAt (xlow + 1) (ylow + 1))]
+                maybeEnd xlow ylow ++
+                [
+                 Triangle (nodeAt Outer xlow ylow) (nodeAt Outer xlow (ylow + 1))
+                          (nodeAt Outer (xlow + 1) ylow),
+                 Triangle (nodeAt Outer (xlow + 1) ylow) (nodeAt Outer xlow (ylow + 1))
+                          (nodeAt Outer (xlow + 1) (ylow + 1)),
+                 Triangle (nodeAt Inner xlow ylow) (nodeAt Inner (xlow + 1) ylow)
+                          (nodeAt Inner xlow (ylow + 1)),
+                 Triangle (nodeAt Inner (xlow + 1) ylow) (nodeAt Inner (xlow + 1) (ylow + 1))
+                          (nodeAt Inner xlow (ylow + 1))
+                ]
               ) [0..(refineY - 2)]
             ) [0..(refineX - 2)]
       in
        GLPrimModel { primitives =
-                       concatMap (\surf -> concatMap (\elID -> elementPrims elID surf) allElements)
-                                 allSurfaces }
+                       concatMap (\elID -> elementPrims elID) allElements }
 
 selectDataset : (DynamicDropdown, Signal Dataset)
 selectDataset = dynamicDropDown "Loading...        " (Dataset (fromString "Loading"))
